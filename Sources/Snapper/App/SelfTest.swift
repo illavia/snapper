@@ -157,6 +157,32 @@ enum SelfTest {
             let second = canvas.hasSelection
             click(canvas, canvas.convert(CGPoint(x: 3, y: canvas.bounds.height - 3), to: nil))
             Log.write("selftest: selected=\(first), after click outside image=\(afterOutside), reselected=\(second), after click on empty image=\(canvas.hasSelection)")
+        case "recolour":
+            // Select a mark, change the colour well, and check the mark took the colour.
+            guard let window = NSApp.windows.first(where: { $0.isVisible && findCanvas(in: $0.contentView) != nil }),
+                  let canvas = findCanvas(in: window.contentView), let mark = canvas.annotations.first,
+                  let well = allViews(in: window.contentView).compactMap({ $0 as? NSColorWell }).first else {
+                Log.write("selftest: no open editor with marks")
+                return
+            }
+            canvas.tool = .select
+            let p = canvas.convert(CGPoint(x: mark.bounds.midX, y: mark.bounds.midY), to: nil)
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                let event = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [],
+                                               timestamp: ProcessInfo.processInfo.systemUptime,
+                                               windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                                               clickCount: 1, pressure: 1)!
+                if type == .leftMouseDown { canvas.mouseDown(with: event) } else { canvas.mouseUp(with: event) }
+            }
+            let wellFollowed = well.color.usingColorSpace(.sRGB) == mark.color.usingColorSpace(.sRGB)
+            well.color = .systemGreen // set the way the colour picker does, without sending the action
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let now = canvas.annotations.first?.color.usingColorSpace(.sRGB)
+                let changed = now == NSColor.systemGreen.usingColorSpace(.sRGB)
+                canvas.undo(nil)
+                let undone = canvas.annotations.first?.color.usingColorSpace(.sRGB) == mark.color.usingColorSpace(.sRGB)
+                Log.write("selftest: well followed selection=\(wellFollowed), mark recoloured=\(changed), undo restored=\(undone)")
+            }
         case "reopen":
             // Reopen an edited capture: the marks should be back and still editable.
             guard let path = items.first(where: { $0.name == "path" })?.value else { return }

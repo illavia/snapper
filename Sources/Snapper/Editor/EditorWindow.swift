@@ -10,6 +10,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
     private let tools = NSSegmentedControl()
     private let colorWell = NSColorWell()
     private var file: URL?
+    private var colourObservation: NSKeyValueObservation?
     /// The capture before any marks or crop.
     private let original: CGImage
     private var originalNeedsStoring: Bool
@@ -59,6 +60,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         buildContent()
 
         canvas.onToolKey = { [weak self] tool in self?.select(tool) }
+        canvas.onSelectColor = { [weak self] colour in self?.colorWell.color = colour }
         canvas.onCopy = { [weak self] in self?.copyImage() }
         canvas.onSave = { [weak self] in self?.save() }
         canvas.onChange = { [weak self] in self?.window.isDocumentEdited = self?.canvas.isModified ?? false }
@@ -81,6 +83,11 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         colorWell.colorWellStyle = .minimal
         colorWell.target = self
         colorWell.action = #selector(colorChanged)
+        colorWell.isContinuous = true
+        colourObservation = colorWell.observe(\.color, options: [.new]) { [weak self] well, _ in
+            // Some ways of picking a colour do not send the action, so watch the value as well.
+            DispatchQueue.main.async { if self?.canvas.color != well.color { self?.canvas.color = well.color } }
+        }
         colorWell.toolTip = "Colour"
 
         let undo = NSButton(image: NSImage(systemSymbolName: "arrow.uturn.backward", accessibilityDescription: "Undo")!,

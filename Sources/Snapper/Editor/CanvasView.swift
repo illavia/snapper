@@ -8,7 +8,10 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     private(set) var isModified = false
 
     var tool: Tool = .arrow { didSet { commitTextEditing(); selected = nil; window?.invalidateCursorRects(for: self); needsDisplay = true } }
-    var color: NSColor = .systemRed
+    /// The colour for new marks. Changing it also recolours the selected mark, or the text being typed.
+    var color: NSColor = .systemRed { didSet { applyColorToSelection() } }
+    /// Tells the toolbar which colour the newly selected mark has.
+    var onSelectColor: ((NSColor) -> Void)?
     var onToolKey: ((Tool) -> Void)?
     var onCopy: (() -> Void)?
     var onSave: (() -> Void)?
@@ -18,7 +21,16 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     private(set) var crop: CGRect?
     private var undoStack: [(CGImage, [Annotation], CGRect?)] = []
     private var redoStack: [(CGImage, [Annotation], CGRect?)] = []
-    private var selected: Int?
+    private var selected: Int? {
+        didSet {
+            guard selected != oldValue else { return }
+            recolourUndoPushed = false
+            if let index = selected, index < annotations.count, Self.takesColour(annotations[index].kind) {
+                onSelectColor?(annotations[index].color)
+            }
+        }
+    }
+    private var recolourUndoPushed = false
     private var draft: Annotation?
     private var cropRect: CGRect?
     private var dragOrigin: CGPoint?
@@ -92,6 +104,27 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     }
 
     func markSaved() { isModified = false }
+
+    private static func takesColour(_ kind: Annotation.Kind) -> Bool {
+        kind != .highlight && kind != .blur
+    }
+
+    private func applyColorToSelection() {
+        if let field = textField {
+            editingColor = color
+            field.backgroundColor = color
+            field.textColor = Annotation(kind: .text, start: .zero, end: .zero, color: color)
+                .textAttributes[.foregroundColor] as? NSColor ?? .white
+        }
+        guard let index = selected, index < annotations.count, Self.takesColour(annotations[index].kind),
+              annotations[index].color != color else { return }
+        // Dragging around the colour picker sends many changes; they undo as one step.
+        if !recolourUndoPushed { pushUndo(); recolourUndoPushed = true }
+        annotations[index].color = color
+        isModified = true
+        onChange?()
+        needsDisplay = true
+    }
 
     var hasSelection: Bool { selected != nil }
 
