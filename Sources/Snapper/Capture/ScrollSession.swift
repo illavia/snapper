@@ -213,12 +213,10 @@ final class ScrollSession {
         hud.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
         hud.isReleasedWhenClosed = false
 
-        let background = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
-        background.material = .hudWindow
-        background.state = .active
+        let background = NSView(frame: NSRect(origin: .zero, size: size))
         background.wantsLayer = true
         background.layer?.cornerRadius = 16
-        background.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.72).cgColor
+        background.layer?.backgroundColor = NSColor(white: 0.08, alpha: 0.94).cgColor
         background.layer?.borderColor = NSColor.white.withAlphaComponent(0.35).cgColor
         background.layer?.borderWidth = 1
 
@@ -227,6 +225,8 @@ final class ScrollSession {
         label.textColor = .white
         label.maximumNumberOfLines = 2
         label.isSelectable = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.widthAnchor.constraint(equalToConstant: size.width - 20 - 12 - 150 - 140 - 24).isActive = true
         let done = PillButton(title: "Done  ⏎", fill: .systemGreen, width: 150,
                               target: self, action: #selector(doneClicked))
         let cancel = PillButton(title: "Cancel  esc", fill: NSColor(white: 0.38, alpha: 1), width: 140,
