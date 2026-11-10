@@ -197,8 +197,8 @@ final class ScrollSession {
         border.orderFrontRegardless()
         self.border = border
 
-        let size = NSSize(width: 470, height: 40)
-        var origin = NSPoint(x: frame.midX - size.width / 2, y: frame.minY - size.height - 10)
+        let size = NSSize(width: 680, height: 68)
+        var origin = NSPoint(x: frame.midX - size.width / 2, y: frame.minY - size.height - 12)
         if origin.y < screen.visibleFrame.minY + 4 { origin.y = frame.maxY + 10 }
         if origin.y + size.height > screen.frame.maxY - 4 { origin.y = frame.minY + 10 }
         origin.x = min(max(origin.x, screen.frame.minX + 4), screen.frame.maxX - size.width - 4)
@@ -217,23 +217,27 @@ final class ScrollSession {
         background.material = .hudWindow
         background.state = .active
         background.wantsLayer = true
-        background.layer?.cornerRadius = 10
+        background.layer?.cornerRadius = 16
+        background.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.72).cgColor
+        background.layer?.borderColor = NSColor.white.withAlphaComponent(0.35).cgColor
+        background.layer?.borderWidth = 1
 
-        let label = NSTextField(labelWithString: "Scroll down slowly")
-        label.font = .systemFont(ofSize: 12, weight: .medium)
+        let label = NSTextField(wrappingLabelWithString: "Scroll down slowly")
+        label.font = .systemFont(ofSize: 15, weight: .medium)
         label.textColor = .white
-        label.lineBreakMode = .byTruncatingTail
-        let done = NSButton(title: "Done ⏎", target: self, action: #selector(doneClicked))
-        done.bezelStyle = .rounded
-        done.controlSize = .small
-        let cancel = NSButton(title: "Cancel ⎋", target: self, action: #selector(cancelClicked))
-        cancel.bezelStyle = .rounded
-        cancel.controlSize = .small
+        label.maximumNumberOfLines = 2
+        label.isSelectable = false
+        let done = PillButton(title: "Done  ⏎", fill: .systemGreen, width: 150,
+                              target: self, action: #selector(doneClicked))
+        let cancel = PillButton(title: "Cancel  esc", fill: NSColor(white: 0.38, alpha: 1), width: 140,
+                                target: self, action: #selector(cancelClicked))
 
         let stack = NSStackView(views: [label, done, cancel])
         stack.orientation = .horizontal
-        stack.spacing = 8
-        stack.edgeInsets = NSEdgeInsets(top: 0, left: 12, bottom: 0, right: 10)
+        stack.spacing = 12
+        stack.distribution = .fill
+        stack.alignment = .centerY
+        stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 0, right: 12)
         stack.frame = background.bounds
         stack.autoresizingMask = [.width, .height]
         label.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -252,6 +256,42 @@ final class ScrollSession {
 
     @objc private func doneClicked() { finish(deliver: true) }
     @objc private func cancelClicked() { finish(deliver: false) }
+}
+
+/// A large, solid, clearly clickable button for the scrolling bar.
+private final class PillButton: NSButton {
+    private let fill: NSColor
+
+    init(title: String, fill: NSColor, width: CGFloat, target: AnyObject, action: Selector) {
+        self.fill = fill
+        super.init(frame: .zero)
+        self.target = target
+        self.action = action
+        isBordered = false
+        wantsLayer = true
+        layer?.cornerRadius = 10
+        layer?.backgroundColor = fill.cgColor
+        attributedTitle = NSAttributedString(string: title, attributes: [
+            .font: NSFont.systemFont(ofSize: 17, weight: .bold),
+            .foregroundColor: NSColor.white,
+        ])
+        translatesAutoresizingMaskIntoConstraints = false
+        widthAnchor.constraint(equalToConstant: width).isActive = true
+        heightAnchor.constraint(equalToConstant: 46).isActive = true
+        setContentHuggingPriority(.required, for: .horizontal)
+        setContentCompressionResistancePriority(.required, for: .horizontal)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+
+    required init?(coder: NSCoder) { fatalError("not used") }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override func mouseEntered(with event: NSEvent) {
+        layer?.backgroundColor = (fill.blended(withFraction: 0.18, of: .white) ?? fill).cgColor
+    }
+    override func mouseExited(with event: NSEvent) { layer?.backgroundColor = fill.cgColor }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .pointingHand) }
 }
 
 private final class BorderView: NSView {
