@@ -77,6 +77,7 @@ enum SelfTest {
                 drag(.arrow, at(0.15, 0.2), at(0.4, 0.4))
                 drag(.box, at(0.5, 0.15), at(0.85, 0.4))
                 drag(.highlight, at(0.1, 0.55), at(0.6, 0.65))
+                drag(.blur, at(0.3, 0.05), at(0.75, 0.13))
                 canvas.tool = .step
                 for p in [at(0.7, 0.6), at(0.8, 0.6), at(0.9, 0.6)] {
                     canvas.mouseDown(with: event(.leftMouseDown, p))

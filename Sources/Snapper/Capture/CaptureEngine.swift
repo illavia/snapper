@@ -24,7 +24,8 @@ struct Frozen {
 enum CaptureEngine {
     static var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
 
-    /// Normally Snapper's own windows (thumbnail, editor) are left out of captures. Tests turn this off.
+    /// Snapper's floating pieces (thumbnail, scrolling bar, pins, its menu) are left out of captures;
+    /// its ordinary windows (editor, About, history) are captured like any other. This includes everything.
     static var includeOwnWindows = false
 
     /// Captures a whole display, leaving out Snapper's own windows.
@@ -38,7 +39,9 @@ enum CaptureEngine {
         }
         let listed = Date()
         let pid = ProcessInfo.processInfo.processIdentifier
-        let mine = includeOwnWindows ? [] : content.windows.filter { $0.owningApplication?.processID == pid }
+        let mine = includeOwnWindows ? [] : content.windows.filter {
+            $0.owningApplication?.processID == pid && $0.windowLayer != 0
+        }
         let filter = SCContentFilter(display: display, excludingWindows: mine)
         let config = SCStreamConfiguration()
         let scale = screen.backingScaleFactor

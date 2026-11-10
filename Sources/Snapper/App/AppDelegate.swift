@@ -22,8 +22,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.captureScrolling()
         }
 
+        HotKeyCenter.shared.register(id: 4, keyCode: HotKey.keyT, modifiers: HotKey.optionShift) { [weak self] in
+            self?.captureText()
+        }
+        HotKeyCenter.shared.register(id: 5, keyCode: HotKey.keyP, modifiers: HotKey.optionShift) { [weak self] in
+            self?.capturePin()
+        }
+
         if !CaptureEngine.hasPermission { CGRequestScreenCaptureAccess() }
         Log.write("launched, screen permission: \(CaptureEngine.hasPermission)")
+        TextGrab.warmUp()
     }
 
     // MARK: Menu
@@ -35,6 +43,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Capture Region or Window", #selector(menuCapture), key: "c"))
         menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), key: "f"))
         menu.addItem(item("Scrolling Capture", #selector(menuScrolling), key: "s"))
+        menu.addItem(item("Grab Text", #selector(menuText), key: "t"))
+        menu.addItem(item("Pin Region to Screen", #selector(menuPin), key: "p"))
+        if PinController.shared.count > 0 {
+            menu.addItem(item("Close All Pins (\(PinController.shared.count))", #selector(menuClosePins)))
+        }
         menu.addItem(.separator())
 
         let recent = FileStore.recent(limit: 8)
@@ -74,6 +87,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func menuCapture() { afterMenuCloses { self.captureInteractive() } }
     @objc private func menuFullScreen() { afterMenuCloses { self.captureFullScreen() } }
     @objc private func menuScrolling() { afterMenuCloses { self.captureScrolling() } }
+    @objc private func menuText() { afterMenuCloses { self.captureText() } }
+    @objc private func menuPin() { afterMenuCloses { self.capturePin() } }
+    @objc private func menuClosePins() { PinController.shared.closeAll() }
     @objc private func menuHistory() { HistoryWindowController.shared.show() }
     @objc private func menuOpenFolder() {
         try? FileManager.default.createDirectory(at: FileStore.folder, withIntermediateDirectories: true)
@@ -161,6 +177,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// Pick an area and copy the text in it.
+    func captureText() {
+        guard !OverlayController.isActive, !ScrollSession.isActive else { return }
+        Task {
+            do {
+                guard let picked = try await OverlayController.pick(hint: "Drag over the text to copy") else { return }
+                guard let image = picked.frozen.crop(picked.rect) else { return }
+                await deliverText(from: image)
+            } catch { report(error) }
+        }
+    }
+
+    func deliverText(from image: CGImage) async {
+        let began = Date()
+        let text = await TextGrab.recognise(image)
+        Log.write("text: recognition took \(Int(Date().timeIntervalSince(began) * 1000)) ms")
+        guard !text.isEmpty else {
+            Log.write("text: nothing recognised in \(image.width)x\(image.height)")
+            Toast.show("No text found", detail: "Try a tighter or larger selection.", warn: true)
+            return
+        }
+        let copied = TextGrab.copy(text)
+        Log.write("text: \(text.count) characters, clipboard=\(copied)")
+        Toast.show(copied ? "Text copied" : "Could not copy text", detail: String(text.prefix(160)), warn: !copied)
+    }
+
+    /// Pick an area and keep it floating on screen where it was.
+    func capturePin() {
+        guard !OverlayController.isActive, !ScrollSession.isActive else { return }
+        Task {
+            do {
+                guard let picked = try await OverlayController.pick(hint: "Drag over the area to pin") else { return }
+                pin(picked.rect, of: picked.frozen)
+            } catch { report(error) }
+        }
+    }
+
+    private func pin(_ rect: CGRect, of frozen: Frozen) {
+        guard let image = frozen.crop(rect), let shot = Shot(image: image, scale: frozen.scale) else { return }
+        let screen = frozen.screen
+        let origin = NSPoint(x: screen.frame.minX + rect.minX, y: screen.frame.maxY - rect.maxY)
+        PinController.shared.pin(shot, at: origin)
+    }
+
     /// Direct rectangle capture with no overlay, used by the snapper:// URL hook.
     func captureRect(_ rect: CGRect, on screen: NSScreen) {
         Task {
@@ -214,6 +274,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// Opens Snapper's own menu and photographs it, since a menu closes the moment any shortcut is pressed.
+    private func menuShot(to path: String) {
+        let timer = Timer(timeInterval: 1.2, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                defer { self?.statusItem.menu?.cancelTracking() }
+                let pid = Int(ProcessInfo.processInfo.processIdentifier)
+                let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+                var area = CGRect.null
+                for info in list where (info[kCGWindowOwnerPID as String] as? Int) == pid
+                    && (info[kCGWindowLayer as String] as? Int ?? 0) >= 25 {
+                    if let dict = info[kCGWindowBounds as String] as? NSDictionary,
+                       let bounds = CGRect(dictionaryRepresentation: dict as CFDictionary) { area = area.union(bounds) }
+                }
+                guard !area.isNull else { Log.write("menushot: menu not found"); return }
+                let screen = NSScreen.screens.first(where: {
+                    CGRect(origin: $0.quartzOrigin, size: $0.frame.size).contains(CGPoint(x: area.midX, y: area.midY))
+                }) ?? NSScreen.screens[0]
+                var local = area.offsetBy(dx: -screen.quartzOrigin.x, dy: -screen.quartzOrigin.y).insetBy(dx: -14, dy: -14)
+                local = CGRect(x: local.minX, y: 0, width: local.width, height: local.maxY)
+                CaptureEngine.includeOwnWindows = true
+                defer { CaptureEngine.includeOwnWindows = false }
+                guard let frozen = try? await CaptureEngine.captureDisplay(screen), let image = frozen.crop(local),
+                      let shot = Shot(image: image, scale: frozen.scale) else { return }
+                try? shot.png.write(to: URL(fileURLWithPath: path))
+                Log.write("menushot: \(image.width)x\(image.height)")
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        statusItem.button?.performClick(nil)
+    }
+
     // MARK: URL hook (snapper://capture, snapper://fullscreen, snapper://scroll, snapper://rect?x=&y=&w=&h=)
 
     func application(_ application: NSApplication, open urls: [URL]) {
@@ -233,7 +324,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let path = items.first(where: { $0.name == "path" })?.value {
                     EditorWindowController.open(file: URL(fileURLWithPath: path))
                 }
-            case "rect", "scrollrect":
+            case "text": captureText()
+            case "menushot":
+                let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                if let path = items.first(where: { $0.name == "path" })?.value { menuShot(to: path) }
+            case "pin": capturePin()
+            case "closepins": PinController.shared.closeAll()
+            case "rect", "scrollrect", "textrect", "pinrect":
                 let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
                 func value(_ name: String) -> CGFloat {
                     CGFloat(Double(items.first(where: { $0.name == name })?.value ?? "") ?? 0)
@@ -248,6 +345,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if url.host == "rect" {
                     CaptureEngine.includeOwnWindows = items.contains(where: { $0.name == "own" })
                     captureRect(rect, on: screen)
+                } else if url.host == "textrect" || url.host == "pinrect" {
+                    let wantsText = url.host == "textrect"
+                    Task {
+                        guard let frozen = try? await CaptureEngine.captureDisplay(screen) else { return }
+                        if wantsText {
+                            if let image = frozen.crop(rect) { await self.deliverText(from: image) }
+                        } else {
+                            self.pin(rect, of: frozen)
+                        }
+                    }
                 } else {
                     ScrollSession.start(rect: rect, screen: screen) { [weak self] image, scale in
                         self?.deliver(image, scale: scale, kind: "scrolling")

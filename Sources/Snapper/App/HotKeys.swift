@@ -52,4 +52,6 @@ enum HotKey {
     static let keyC = UInt32(kVK_ANSI_C)
     static let keyS = UInt32(kVK_ANSI_S)
     static let keyF = UInt32(kVK_ANSI_F)
+    static let keyT = UInt32(kVK_ANSI_T)
+    static let keyP = UInt32(kVK_ANSI_P)
 }

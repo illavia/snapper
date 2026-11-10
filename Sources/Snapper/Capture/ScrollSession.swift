@@ -15,7 +15,7 @@ final class RegionGrabber {
         guard let id = screen.displayID,
               let display = content.displays.first(where: { $0.displayID == id }) else { throw CaptureError.noDisplay }
         let pid = ProcessInfo.processInfo.processIdentifier
-        let mine = content.windows.filter { $0.owningApplication?.processID == pid }
+        let mine = content.windows.filter { $0.owningApplication?.processID == pid && $0.windowLayer != 0 }
         filter = SCContentFilter(display: display, excludingWindows: mine)
         config = SCStreamConfiguration()
         let scale = screen.backingScaleFactor

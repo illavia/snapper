@@ -1,7 +1,7 @@
 import AppKit
 
 enum Tool: Int, CaseIterable {
-    case select, arrow, box, text, highlight, step, crop
+    case select, arrow, box, text, highlight, step, blur, crop
 
     var symbol: String {
         switch self {
@@ -11,6 +11,7 @@ enum Tool: Int, CaseIterable {
         case .text: return "textformat"
         case .highlight: return "highlighter"
         case .step: return "1.circle"
+        case .blur: return "eye.slash"
         case .crop: return "crop"
         }
     }
@@ -23,6 +24,7 @@ enum Tool: Int, CaseIterable {
         case .text: return "Text (T)"
         case .highlight: return "Highlight (H)"
         case .step: return "Numbered step (N)"
+        case .blur: return "Blur / redact (R)"
         case .crop: return "Crop (C)"
         }
     }
@@ -35,6 +37,7 @@ enum Tool: Int, CaseIterable {
         case .text: return "t"
         case .highlight: return "h"
         case .step: return "n"
+        case .blur: return "r"
         case .crop: return "c"
         }
     }
@@ -42,7 +45,7 @@ enum Tool: Int, CaseIterable {
 
 /// One mark on the image. Coordinates are image points, origin top-left.
 struct Annotation {
-    enum Kind { case arrow, box, text, highlight, step }
+    enum Kind { case arrow, box, text, highlight, step, blur }
 
     var kind: Kind
     var start: CGPoint
@@ -64,7 +67,7 @@ struct Annotation {
 
     var bounds: CGRect {
         switch kind {
-        case .arrow, .box, .highlight:
+        case .arrow, .box, .highlight, .blur:
             return CGRect(x: min(start.x, end.x), y: min(start.y, end.y),
                           width: abs(end.x - start.x), height: abs(end.y - start.y))
         case .step:
@@ -93,8 +96,8 @@ struct Annotation {
         end.x += delta.x; end.y += delta.y
     }
 
-    /// Draws into the current (flipped) graphics context.
-    func draw() {
+    /// Draws into the current (flipped) graphics context. Blur needs the image underneath it.
+    func draw(over image: CGImage? = nil, scale: CGFloat = 1) {
         switch kind {
         case .arrow:
             let length = hypot(end.x - start.x, end.y - start.y)
@@ -140,7 +143,37 @@ struct Annotation {
             label.draw(at: CGPoint(x: bounds.midX - size.width / 2, y: bounds.midY - size.height / 2))
         case .text:
             NSAttributedString(string: text, attributes: textAttributes).draw(at: start)
+        case .blur:
+            drawPixelated(over: image, scale: scale)
         }
+    }
+
+    /// Replaces the area with coarse blocks so the original cannot be read.
+    private func drawPixelated(over image: CGImage?, scale: CGFloat) {
+        let area = bounds
+        guard let image, area.width >= 2, area.height >= 2 else {
+            NSColor.gray.setFill()
+            area.fill()
+            return
+        }
+        let pixels = CGRect(x: (area.minX * scale).rounded(), y: (area.minY * scale).rounded(),
+                            width: (area.width * scale).rounded(), height: (area.height * scale).rounded())
+            .intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        guard pixels.width >= 1, pixels.height >= 1, let crop = image.cropping(to: pixels) else { return }
+        let block: CGFloat = 12 // points per block
+        let columns = max(Int((area.width / block).rounded(.up)), 1)
+        let rows = max(Int((area.height / block).rounded(.up)), 1)
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let small = CGContext(data: nil, width: columns, height: rows, bitsPerComponent: 8, bytesPerRow: 0,
+                                    space: space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return }
+        small.interpolationQuality = .medium
+        small.draw(crop, in: CGRect(x: 0, y: 0, width: columns, height: rows))
+        guard let reduced = small.makeImage() else { return }
+        let target = CGRect(x: pixels.minX / scale, y: pixels.minY / scale,
+                            width: pixels.width / scale, height: pixels.height / scale)
+        NSImage(cgImage: reduced, size: target.size)
+            .draw(in: target, from: .zero, operation: .copy, fraction: 1, respectFlipped: true,
+                  hints: [.interpolation: NSNumber(value: NSImageInterpolation.none.rawValue)])
     }
 
     private static func distance(from p: CGPoint, toSegment a: CGPoint, _ b: CGPoint) -> CGFloat {

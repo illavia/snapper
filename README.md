@@ -11,6 +11,8 @@ text, highlights, numbered steps and crop.
 | Shift-Option-C | Capture a region (drag) or a window (click) |
 | Shift-Option-F | Capture the full screen |
 | Shift-Option-S | Scrolling capture: pick the area, scroll down slowly, press Return |
+| Shift-Option-T | Grab text: drag over text and it is copied as text |
+| Shift-Option-P | Pin: drag over an area and it stays floating on screen |
 
 ## Build
 

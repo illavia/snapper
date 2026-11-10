@@ -114,6 +114,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         case .arrow: draft = Annotation(kind: .arrow, start: p, end: p, color: color)
         case .box: draft = Annotation(kind: .box, start: p, end: p, color: color)
         case .highlight: draft = Annotation(kind: .highlight, start: p, end: p, color: color)
+        case .blur: draft = Annotation(kind: .blur, start: p, end: p, color: color)
         case .step:
             pushUndo()
             let next = (annotations.filter { $0.kind == .step }.map(\.number).max() ?? 0) + 1
@@ -135,7 +136,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
                 if !didPushForMove { pushUndo(); didPushForMove = true }
                 annotations[index].move(by: CGPoint(x: p.x - last.x, y: p.y - last.y))
             }
-        case .arrow, .box, .highlight:
+        case .arrow, .box, .highlight, .blur:
             draft?.end = p
         case .crop:
             cropRect = CGRect(x: min(origin.x, p.x), y: min(origin.y, p.y),
@@ -250,8 +251,10 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     override func draw(_ dirtyRect: NSRect) {
         NSImage(cgImage: image, size: bounds.size)
             .draw(in: bounds, from: .zero, operation: .copy, fraction: 1, respectFlipped: true, hints: nil)
-        for (index, annotation) in annotations.enumerated() where index != editingIndex { annotation.draw() }
-        draft?.draw()
+        for (index, annotation) in annotations.enumerated() where index != editingIndex {
+            annotation.draw(over: image, scale: scale)
+        }
+        draft?.draw(over: image, scale: scale)
 
         if let index = selected, index < annotations.count {
             NSColor.controlAccentColor.setStroke()
@@ -287,7 +290,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         let graphics = NSGraphicsContext(cgContext: context, flipped: true)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = graphics
-        for annotation in annotations { annotation.draw() }
+        for annotation in annotations { annotation.draw(over: image, scale: scale) }
         NSGraphicsContext.restoreGraphicsState()
         return context.makeImage()
     }
