@@ -26,6 +26,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     private var didPushForMove = false
     private var textField: NSTextField?
     private var editingIndex: Int?
+    private var editingColor: NSColor?
 
     /// `image` is the untouched original; `crop` and `annotations` restore an earlier edit.
     init(image original: CGImage, scale: CGFloat, annotations: [Annotation] = [], crop: CGRect? = nil) {
@@ -140,7 +141,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             let next = (annotations.filter { $0.kind == .step }.map(\.number).max() ?? 0) + 1
             annotations.append(Annotation(kind: .step, start: p, end: p, color: color, number: next))
         case .text:
-            beginTextEditing(at: CGPoint(x: p.x, y: p.y - 11), existing: nil)
+            beginTextEditing(at: CGPoint(x: p.x, y: p.y - 15), existing: nil)
         case .crop:
             cropRect = CGRect(origin: p, size: .zero)
         }
@@ -228,12 +229,17 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     // MARK: Text
 
     private func beginTextEditing(at origin: CGPoint, existing: Int?) {
-        let field = NSTextField(frame: NSRect(x: origin.x - 2, y: origin.y - 2, width: 260, height: 28))
+        let labelColor = existing.map { annotations[$0].color } ?? color
+        let field = NSTextField(frame: NSRect(x: origin.x, y: origin.y, width: 280, height: 30))
         field.font = Annotation.textFont
-        field.textColor = existing.map { annotations[$0].color } ?? color
+        field.textColor = Annotation(kind: .text, start: .zero, end: .zero, color: labelColor)
+            .textAttributes[.foregroundColor] as? NSColor ?? .white
         field.isBordered = false
         field.drawsBackground = true
-        field.backgroundColor = NSColor.white.withAlphaComponent(0.85)
+        field.backgroundColor = labelColor
+        field.wantsLayer = true
+        field.layer?.cornerRadius = 6
+        editingColor = labelColor
         field.focusRingType = .none
         field.delegate = self
         field.stringValue = existing.map { annotations[$0].text } ?? ""
@@ -250,8 +256,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
         guard let field = textField else { return }
         textField = nil
         let text = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        let origin = CGPoint(x: field.frame.minX + 2, y: field.frame.minY + 2)
-        let fieldColor = field.textColor ?? color
+        let origin = CGPoint(x: field.frame.minX, y: field.frame.minY)
+        let fieldColor = editingColor ?? color
         field.removeFromSuperview()
         if let index = editingIndex, index < annotations.count {
             if text != annotations[index].text {

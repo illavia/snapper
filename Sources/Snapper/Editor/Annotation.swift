@@ -54,15 +54,21 @@ struct Annotation {
     var text: String = ""
     var number: Int = 0
 
-    static let textFont = NSFont.systemFont(ofSize: 18, weight: .semibold)
+    static let textFont = NSFont.systemFont(ofSize: 17, weight: .semibold)
     static let stepRadius: CGFloat = 13
 
+    /// Text is drawn as a solid label in the chosen colour, so it reads on any background.
+    static let textPadding = CGSize(width: 8, height: 4)
+
+    /// White on dark or saturated colours, black on pale ones.
+    private var textColor: NSColor {
+        let c = color.usingColorSpace(.sRGB) ?? color
+        let luminance = 0.299 * c.redComponent + 0.587 * c.greenComponent + 0.114 * c.blueComponent
+        return luminance > 0.7 ? .black : .white
+    }
+
     var textAttributes: [NSAttributedString.Key: Any] {
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.white.withAlphaComponent(0.9)
-        shadow.shadowBlurRadius = 2
-        shadow.shadowOffset = .zero
-        return [.font: Self.textFont, .foregroundColor: color, .shadow: shadow]
+        [.font: Self.textFont, .foregroundColor: textColor]
     }
 
     var bounds: CGRect {
@@ -75,7 +81,8 @@ struct Annotation {
             return CGRect(x: start.x - r, y: start.y - r, width: r * 2, height: r * 2)
         case .text:
             let size = NSAttributedString(string: text.isEmpty ? " " : text, attributes: textAttributes).size()
-            return CGRect(origin: start, size: size)
+            return CGRect(x: start.x, y: start.y, width: size.width + Self.textPadding.width * 2,
+                          height: size.height + Self.textPadding.height * 2)
         }
     }
 
@@ -142,7 +149,11 @@ struct Annotation {
             let size = label.size()
             label.draw(at: CGPoint(x: bounds.midX - size.width / 2, y: bounds.midY - size.height / 2))
         case .text:
-            NSAttributedString(string: text, attributes: textAttributes).draw(at: start)
+            let label = bounds
+            color.setFill()
+            NSBezierPath(roundedRect: label, xRadius: 6, yRadius: 6).fill()
+            NSAttributedString(string: text, attributes: textAttributes)
+                .draw(at: CGPoint(x: label.minX + Self.textPadding.width, y: label.minY + Self.textPadding.height))
         case .blur:
             drawPixelated(over: image, scale: scale)
         }

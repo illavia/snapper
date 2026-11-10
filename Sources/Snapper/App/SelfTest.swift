@@ -104,6 +104,33 @@ enum SelfTest {
                 canvas.copy(nil)
                 if items.contains(where: { $0.name == "close" }) { window.performClose(nil) }
             }
+        case "texts":
+            // Place the same text on different backgrounds and in different colours.
+            guard let path = items.first(where: { $0.name == "path" })?.value else { return }
+            EditorWindowController.open(file: URL(fileURLWithPath: path))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                guard let window = NSApp.windows.first(where: { $0.isVisible && findCanvas(in: $0.contentView) != nil }),
+                      let canvas = findCanvas(in: window.contentView) else { return }
+                canvas.tool = .text
+                let size = canvas.bounds.size
+                let colours: [NSColor] = [.systemRed, .systemRed, .systemRed, .systemYellow, .black, .systemBlue]
+                let spots: [(CGFloat, CGFloat)] = [(0.08, 0.15), (0.08, 0.5), (0.08, 0.85), (0.55, 0.15), (0.55, 0.5), (0.55, 0.85)]
+                for (colour, spot) in zip(colours, spots) {
+                    canvas.color = colour
+                    let p = canvas.convert(CGPoint(x: size.width * spot.0, y: size.height * spot.1), to: nil)
+                    let down = NSEvent.mouseEvent(with: .leftMouseDown, location: p, modifierFlags: [],
+                                                  timestamp: ProcessInfo.processInfo.systemUptime,
+                                                  windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                                                  clickCount: 1, pressure: 1)!
+                    canvas.mouseDown(with: down)
+                    if let field = canvas.subviews.compactMap({ $0 as? NSTextField }).first {
+                        field.stringValue = "Hello how are you"
+                        window.makeFirstResponder(canvas)
+                    }
+                }
+                canvas.tool = .select
+                Log.write("selftest: placed \(canvas.annotations.count) text labels")
+            }
         case "reopen":
             // Reopen an edited capture: the marks should be back and still editable.
             guard let path = items.first(where: { $0.name == "path" })?.value else { return }

@@ -49,7 +49,7 @@ Click a thumbnail, or open any capture from Recent Captures or history.
 | Select | V | Click a mark to select it, drag to move, Delete to remove, double-click text to edit |
 | Arrow | A | Drag |
 | Box | B | Drag |
-| Text | T | Click, type, Return |
+| Text | T | Click, type, Return. Drawn as a solid label in the chosen colour so it reads on any background |
 | Highlight | H | Drag |
 | Numbered step | N | Click; numbers count up |
 | Blur / redact | R | Drag over anything to pixelate it |
