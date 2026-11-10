@@ -5,7 +5,7 @@ Every capture goes straight to the clipboard and is saved as a PNG.
 
 <img src="docs/menu.png" width="275" alt="The Snapper menu"> <img src="docs/about.png" width="284" alt="About Snapper">
 
-- Version 1.0.0, developed by Jawaz Illavia, built with Claude Code
+- Version 1.1.0, developed by Jawaz Illavia, built with Claude Code
 - Native Swift, no third-party packages, about 0.9 MB installed
 - macOS 14 or later (built and used on macOS 27, Apple silicon)
 
@@ -106,7 +106,8 @@ The app icon is drawn by `Scripts/make-icon.swift`; rerun it and `iconutil` only
 | To change | Edit |
 |---|---|
 | A shortcut | `Sources/Snapper/App/AppDelegate.swift` (the `HotKeyCenter.shared.register` lines and the matching menu items) and `HotKeys.swift` for key codes |
-| Version, name in About, copyright | `Info.plist` and `menuAbout` in `AppDelegate.swift` |
+| Version shown in About | `CFBundleShortVersionString` in `Info.plist`, by hand. The build number in brackets is set by `build.sh` to the number of commits, so it rises by itself |
+| Name in About, copyright | `Info.plist` and `menuAbout` in `AppDelegate.swift` |
 | Default save folder | `FileStore` in `Sources/Snapper/Output/Output.swift` |
 | How scrolling frames are matched | `Sources/Stitcher/ScrollStitcher.swift` |
 

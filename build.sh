@@ -12,6 +12,12 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 cp "$BIN" "$APP/Contents/MacOS/Snapper"
 cp Info.plist "$APP/Contents/Info.plist"
+
+# The build number is the count of commits, so it rises by itself with every saved change.
+# The version (CFBundleShortVersionString in Info.plist) is changed by hand when a release means something.
+BUILD="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
+if [ -n "$(git status --porcelain 2>/dev/null)" ]; then BUILD="$((BUILD + 1))"; fi
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD" "$APP/Contents/Info.plist"
 mkdir -p "$APP/Contents/Resources"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
