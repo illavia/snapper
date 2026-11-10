@@ -48,9 +48,8 @@ final class HotKeyCenter {
 }
 
 enum HotKey {
-    static let controlShift = UInt32(controlKey | shiftKey)
     static let commandShift = UInt32(cmdKey | shiftKey)
-    static let keyC = UInt32(kVK_ANSI_C)
+    static let key1 = UInt32(kVK_ANSI_1)
     static let key2 = UInt32(kVK_ANSI_2)
-    static let keyF = UInt32(kVK_ANSI_F)
+    static let key6 = UInt32(kVK_ANSI_6)
 }

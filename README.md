@@ -8,8 +8,8 @@ text, highlights, numbered steps and crop.
 
 | Keys | Action |
 |---|---|
-| Control-Shift-C | Capture a region (drag) or a window (click) |
-| Control-Shift-F | Capture the full screen |
+| Shift-Command-1 | Capture a region (drag) or a window (click) |
+| Shift-Command-6 | Capture the full screen |
 | Shift-Command-2 | Scrolling capture: pick the area, scroll down slowly, press Return |
 
 ## Build

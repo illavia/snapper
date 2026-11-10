@@ -12,10 +12,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         statusItem.menu = menu
 
-        HotKeyCenter.shared.register(id: 1, keyCode: HotKey.keyC, modifiers: HotKey.controlShift) { [weak self] in
+        HotKeyCenter.shared.register(id: 1, keyCode: HotKey.key1, modifiers: HotKey.commandShift) { [weak self] in
             self?.captureInteractive()
         }
-        HotKeyCenter.shared.register(id: 2, keyCode: HotKey.keyF, modifiers: HotKey.controlShift) { [weak self] in
+        HotKeyCenter.shared.register(id: 2, keyCode: HotKey.key6, modifiers: HotKey.commandShift) { [weak self] in
             self?.captureFullScreen()
         }
         HotKeyCenter.shared.register(id: 3, keyCode: HotKey.key2, modifiers: HotKey.commandShift) { [weak self] in
@@ -32,8 +32,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.addItem(item("About Snapper", #selector(menuAbout)))
         menu.addItem(.separator())
-        menu.addItem(item("Capture Region or Window", #selector(menuCapture), key: "c"))
-        menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), key: "f"))
+        menu.addItem(item("Capture Region or Window", #selector(menuCapture), key: "1", modifiers: [.command, .shift]))
+        menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), key: "6", modifiers: [.command, .shift]))
         menu.addItem(item("Scrolling Capture", #selector(menuScrolling), key: "2", modifiers: [.command, .shift]))
         menu.addItem(.separator())
 
