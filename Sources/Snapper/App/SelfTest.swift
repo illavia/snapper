@@ -183,6 +183,28 @@ enum SelfTest {
                 let undone = canvas.annotations.first?.color.usingColorSpace(.sRGB) == mark.color.usingColorSpace(.sRGB)
                 Log.write("selftest: well followed selection=\(wellFollowed), mark recoloured=\(changed), undo restored=\(undone)")
             }
+        case "esctext":
+            // Start typing a label, press Esc, and check nothing was added and the box is gone.
+            guard let window = NSApp.windows.first(where: { $0.isVisible && findCanvas(in: $0.contentView) != nil }),
+                  let canvas = findCanvas(in: window.contentView) else {
+                Log.write("selftest: no open editor")
+                return
+            }
+            let before = canvas.annotations.count
+            canvas.tool = .text
+            let p = canvas.convert(CGPoint(x: canvas.bounds.midX, y: canvas.bounds.midY), to: nil)
+            canvas.mouseDown(with: NSEvent.mouseEvent(with: .leftMouseDown, location: p, modifierFlags: [],
+                                                      timestamp: ProcessInfo.processInfo.systemUptime,
+                                                      windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                                                      clickCount: 1, pressure: 1)!)
+            guard let field = canvas.subviews.compactMap({ $0 as? NSTextField }).first else {
+                Log.write("selftest: text box did not open")
+                return
+            }
+            field.stringValue = "abandon me"
+            let handled = canvas.control(field, textView: NSTextView(), doCommandBy: #selector(NSResponder.cancelOperation(_:)))
+            let boxGone = canvas.subviews.compactMap({ $0 as? NSTextField }).isEmpty
+            Log.write("selftest: esc handled=\(handled), box closed=\(boxGone), marks before=\(before) after=\(canvas.annotations.count)")
         case "reopen":
             // Reopen an edited capture: the marks should be back and still editable.
             guard let path = items.first(where: { $0.name == "path" })?.value else { return }

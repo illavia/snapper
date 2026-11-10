@@ -296,6 +296,23 @@ final class CanvasView: NSView, NSTextFieldDelegate {
 
     func controlTextDidEndEditing(_ obj: Notification) { commitTextEditing() }
 
+    /// Esc while typing abandons the text: a new label is dropped, an existing one keeps its old wording.
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        guard commandSelector == #selector(NSResponder.cancelOperation(_:)) else { return false }
+        cancelTextEditing()
+        return true
+    }
+
+    private func cancelTextEditing() {
+        guard let field = textField else { return }
+        textField = nil
+        editingIndex = nil
+        editingColor = nil
+        field.removeFromSuperview()
+        window?.makeFirstResponder(self)
+        needsDisplay = true
+    }
+
     private func commitTextEditing() {
         guard let field = textField else { return }
         textField = nil
