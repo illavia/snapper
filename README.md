@@ -55,8 +55,15 @@ Click a thumbnail, or open any capture from Recent Captures or history.
 | Blur / redact | R | Drag over anything to pixelate it |
 | Crop | C | Drag the area to keep |
 
-Command-Z undoes, Shift-Command-Z redoes, Command-C copies the marked-up image, Command-S saves
-over the capture file. Closing the window saves any changes.
+Command-Z undoes, Shift-Command-Z redoes, Command-C copies the marked-up image, Command-S saves.
+Closing the window saves any changes.
+
+Edits are never final. The PNG in the save folder is a normal flattened image, but Snapper also
+keeps the untouched original and the list of marks in `~/Library/Application Support/Snapper/Edits`.
+Reopen the capture in the editor and every mark is still selectable, movable and deletable, and
+**Revert** takes it back to the original capture. If the PNG is changed by another app, Snapper
+treats it as a plain image again. Stored edits are removed when the capture is moved to the Trash
+from history, or once the file no longer exists.
 
 ### Pins
 

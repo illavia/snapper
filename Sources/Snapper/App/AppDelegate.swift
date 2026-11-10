@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !CaptureEngine.hasPermission { CGRequestScreenCaptureAccess() }
         Log.write("launched, screen permission: \(CaptureEngine.hasPermission)")
         TextGrab.warmUp()
+        EditStore.prune()
     }
 
     // MARK: Menu

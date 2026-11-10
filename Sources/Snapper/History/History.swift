@@ -105,6 +105,7 @@ private struct HistoryCell: View {
             Divider()
             Button("Move to Trash") {
                 try? FileManager.default.trashItem(at: url, resultingItemURL: nil)
+                EditStore.remove(for: url)
                 model.reload()
             }
         }

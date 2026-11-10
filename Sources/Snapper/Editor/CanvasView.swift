@@ -14,8 +14,10 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     var onSave: (() -> Void)?
     var onChange: (() -> Void)?
 
-    private var undoStack: [(CGImage, [Annotation])] = []
-    private var redoStack: [(CGImage, [Annotation])] = []
+    /// The current crop, in pixels of the original image. Nil when uncropped.
+    private(set) var crop: CGRect?
+    private var undoStack: [(CGImage, [Annotation], CGRect?)] = []
+    private var redoStack: [(CGImage, [Annotation], CGRect?)] = []
     private var selected: Int?
     private var draft: Annotation?
     private var cropRect: CGRect?
@@ -25,8 +27,12 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     private var textField: NSTextField?
     private var editingIndex: Int?
 
-    init(image: CGImage, scale: CGFloat) {
+    /// `image` is the untouched original; `crop` and `annotations` restore an earlier edit.
+    init(image original: CGImage, scale: CGFloat, annotations: [Annotation] = [], crop: CGRect? = nil) {
+        let image = crop.flatMap { original.cropping(to: $0) } ?? original
         self.image = image
+        self.annotations = annotations
+        self.crop = crop.flatMap { original.cropping(to: $0) == nil ? nil : $0 }
         self.scale = scale
         super.init(frame: NSRect(origin: .zero, size: Self.pointSize(image, scale)))
     }
@@ -48,7 +54,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     // MARK: Undo
 
     private func pushUndo() {
-        undoStack.append((image, annotations))
+        undoStack.append((image, annotations, crop))
         if undoStack.count > 100 { undoStack.removeFirst() }
         redoStack.removeAll()
         isModified = true
@@ -58,19 +64,20 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     @objc func undo(_ sender: Any?) {
         commitTextEditing()
         guard let state = undoStack.popLast() else { return }
-        redoStack.append((image, annotations))
+        redoStack.append((image, annotations, crop))
         restore(state)
     }
 
     @objc func redo(_ sender: Any?) {
         guard let state = redoStack.popLast() else { return }
-        undoStack.append((image, annotations))
+        undoStack.append((image, annotations, crop))
         restore(state)
     }
 
-    private func restore(_ state: (CGImage, [Annotation])) {
+    private func restore(_ state: (CGImage, [Annotation], CGRect?)) {
         image = state.0
         annotations = state.1
+        crop = state.2
         selected = nil
         isModified = true
         resizeToImage()
@@ -84,6 +91,19 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     }
 
     func markSaved() { isModified = false }
+
+    /// Removes every mark and any crop. Undoable like any other edit.
+    func revert(to original: CGImage) {
+        commitTextEditing()
+        guard !annotations.isEmpty || crop != nil else { return }
+        pushUndo()
+        image = original
+        annotations = []
+        crop = nil
+        selected = nil
+        resizeToImage()
+        onChange?()
+    }
 
     // MARK: Menu actions
 
@@ -172,6 +192,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
             .intersection(CGRect(x: 0, y: 0, width: image.width, height: image.height))
         guard pixels.width >= 2, pixels.height >= 2, let cropped = image.cropping(to: pixels) else { return }
         pushUndo()
+        crop = pixels.offsetBy(dx: crop?.minX ?? 0, dy: crop?.minY ?? 0)
         image = cropped
         let shift = CGPoint(x: -pixels.minX / scale, y: -pixels.minY / scale)
         for index in annotations.indices { annotations[index].move(by: shift) }

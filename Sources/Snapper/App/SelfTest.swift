@@ -104,8 +104,53 @@ enum SelfTest {
                 canvas.copy(nil)
                 if items.contains(where: { $0.name == "close" }) { window.performClose(nil) }
             }
+        case "reopen":
+            // Reopen an edited capture: the marks should be back and still editable.
+            guard let path = items.first(where: { $0.name == "path" })?.value else { return }
+            EditorWindowController.open(file: URL(fileURLWithPath: path))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                guard let window = NSApp.windows.first(where: { $0.isVisible && findCanvas(in: $0.contentView) != nil }),
+                      let canvas = findCanvas(in: window.contentView) else {
+                    Log.write("selftest: editor did not open")
+                    return
+                }
+                Log.write("selftest: reopened with \(canvas.annotations.count) marks, crop=\(canvas.crop != nil), size=\(canvas.image.width)x\(canvas.image.height)")
+                if items.contains(where: { $0.name == "deletefirst" }), let first = canvas.annotations.first {
+                    canvas.tool = .select
+                    let p = first.kind == .arrow ? first.start : CGPoint(x: first.bounds.midX, y: first.bounds.midY)
+                    let inWindow = canvas.convert(p, to: nil)
+                    func event(_ type: NSEvent.EventType) -> NSEvent {
+                        NSEvent.mouseEvent(with: type, location: inWindow, modifierFlags: [],
+                                           timestamp: ProcessInfo.processInfo.systemUptime,
+                                           windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                                           clickCount: 1, pressure: 1)!
+                    }
+                    canvas.mouseDown(with: event(.leftMouseDown))
+                    canvas.mouseUp(with: event(.leftMouseUp))
+                    if let delete = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [],
+                                                     timestamp: ProcessInfo.processInfo.systemUptime,
+                                                     windowNumber: window.windowNumber, context: nil, characters: "\u{7F}",
+                                                     charactersIgnoringModifiers: "\u{7F}", isARepeat: false, keyCode: 51) {
+                        canvas.keyDown(with: delete)
+                    }
+                    Log.write("selftest: after deleting one, \(canvas.annotations.count) marks")
+                }
+                if items.contains(where: { $0.name == "revert" }) {
+                    for case let button as NSButton in allViews(in: window.contentView) where button.title == "Revert" {
+                        button.performClick(nil)
+                    }
+                    Log.write("selftest: after revert, \(canvas.annotations.count) marks, crop=\(canvas.crop != nil), size=\(canvas.image.width)x\(canvas.image.height)")
+                }
+                if let snapshot { save(view: window.contentView!, to: snapshot) }
+                window.performClose(nil)
+            }
         default: break
         }
+    }
+
+    private static func allViews(in view: NSView?) -> [NSView] {
+        guard let view else { return [] }
+        return [view] + view.subviews.flatMap { allViews(in: $0) }
     }
 
     private static func findCanvas(in view: NSView?) -> CanvasView? {

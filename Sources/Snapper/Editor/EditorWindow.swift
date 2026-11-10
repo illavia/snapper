@@ -10,9 +10,12 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
     private let tools = NSSegmentedControl()
     private let colorWell = NSColorWell()
     private var file: URL?
+    /// The capture before any marks or crop.
+    private let original: CGImage
+    private var originalNeedsStoring: Bool
 
     static func open(shot: Shot, file: URL?) {
-        let controller = EditorWindowController(image: shot.image, scale: shot.scale, file: file)
+        let controller = EditorWindowController(original: shot.image, scale: shot.scale, file: file, saved: nil)
         open.append(controller)
         controller.show()
     }
@@ -23,21 +26,29 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
             existing.window.makeKeyAndOrderFront(nil)
             return
         }
+        if let saved = EditStore.load(file: file) {
+            let controller = EditorWindowController(original: saved.original, scale: saved.scale, file: file, saved: saved)
+            open.append(controller)
+            controller.show()
+            return
+        }
         guard let source = CGImageSourceCreateWithURL(file as CFURL, nil),
-              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else {
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil)?.inMemoryCopy() else {
             NSWorkspace.shared.open(file)
             return
         }
         let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
         let dpi = (properties?[kCGImagePropertyDPIWidth] as? Double) ?? 72
-        let controller = EditorWindowController(image: image, scale: dpi >= 140 ? 2 : 1, file: file)
+        let controller = EditorWindowController(original: image, scale: dpi >= 140 ? 2 : 1, file: file, saved: nil)
         open.append(controller)
         controller.show()
     }
 
-    private init(image: CGImage, scale: CGFloat, file: URL?) {
+    private init(original: CGImage, scale: CGFloat, file: URL?, saved: EditStore.Saved?) {
         self.file = file
-        canvas = CanvasView(image: image, scale: scale)
+        self.original = original
+        originalNeedsStoring = saved == nil
+        canvas = CanvasView(image: original, scale: scale, annotations: saved?.annotations ?? [], crop: saved?.crop)
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 640),
                           styleMask: [.titled, .closable, .resizable, .miniaturizable],
                           backing: .buffered, defer: false)
@@ -82,11 +93,14 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         copy.keyEquivalent = "\r"
         let save = NSButton(title: "Save", target: self, action: #selector(saveClicked))
         save.bezelStyle = .texturedRounded
-        save.toolTip = "Save over the capture file (⌘S)"
+        save.toolTip = "Save (⌘S). The original is kept, so marks stay editable when you reopen it"
 
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        let bar = NSStackView(views: [tools, colorWell, undo, spacer, save, copy])
+        let revert = NSButton(title: "Revert", target: self, action: #selector(revertClicked))
+        revert.bezelStyle = .texturedRounded
+        revert.toolTip = "Remove every mark and crop, back to the original capture"
+        let bar = NSStackView(views: [tools, colorWell, undo, revert, spacer, save, copy])
         bar.orientation = .horizontal
         bar.spacing = 10
         bar.edgeInsets = NSEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
@@ -152,6 +166,10 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
     @objc private func colorChanged() { canvas.color = colorWell.color }
     @objc private func copyClicked() { copyImage() }
     @objc private func saveClicked() { save() }
+    @objc private func revertClicked() {
+        canvas.revert(to: original)
+        window.makeFirstResponder(canvas)
+    }
 
     private func currentShot() -> Shot? {
         canvas.flattened().flatMap { Shot(image: $0, scale: canvas.scale) }
@@ -173,6 +191,11 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
             } else {
                 file = try FileStore.save(shot)
             }
+            if let file {
+                EditStore.save(file: file, original: original, writeOriginal: originalNeedsStoring, scale: canvas.scale,
+                               annotations: canvas.annotations, crop: canvas.crop)
+                originalNeedsStoring = false
+            }
             canvas.markSaved()
             window.isDocumentEdited = false
             Log.write("editor: saved \(file?.path ?? "")")
@@ -193,7 +216,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        // Keep the marked-up version rather than lose it; the edit is undoable until this point.
+        // Save on close. Nothing is lost: the original and the marks are kept, so it can be reopened and changed.
         if canvas.isModified { save() }
         Self.open.removeAll { $0 === self }
         DockPresence.windowClosed()
