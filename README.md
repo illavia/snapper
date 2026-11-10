@@ -8,9 +8,9 @@ text, highlights, numbered steps and crop.
 
 | Keys | Action |
 |---|---|
-| Shift-Command-1 | Capture a region (drag) or a window (click) |
-| Shift-Command-6 | Capture the full screen |
-| Shift-Command-2 | Scrolling capture: pick the area, scroll down slowly, press Return |
+| Shift-Option-C | Capture a region (drag) or a window (click) |
+| Shift-Option-F | Capture the full screen |
+| Shift-Option-S | Scrolling capture: pick the area, scroll down slowly, press Return |
 
 ## Build
 

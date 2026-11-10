@@ -57,7 +57,7 @@ private struct HistoryView: View {
             if model.files.isEmpty {
                 VStack(spacing: 8) {
                     Text("No captures yet").font(.title3)
-                    Text("Press Shift-Command-1 to take one.").foregroundStyle(.secondary)
+                    Text("Press Shift-Option-C to take one.").foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
