@@ -3,7 +3,7 @@
 A small menu bar screenshot app for macOS, built as a personal replacement for Snagit.
 Every capture goes straight to the clipboard and is saved as a PNG.
 
-<img src="docs/about.png" width="284" alt="About Snapper">
+<img src="docs/menu.png" width="275" alt="The Snapper menu"> <img src="docs/about.png" width="284" alt="About Snapper">
 
 - Version 1.0.0, developed by Jawaz Illavia, built with Claude Code
 - Native Swift, no third-party packages, about 0.9 MB installed
