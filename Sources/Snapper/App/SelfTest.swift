@@ -131,6 +131,32 @@ enum SelfTest {
                 canvas.tool = .select
                 Log.write("selftest: placed \(canvas.annotations.count) text labels")
             }
+        case "deselect":
+            // Select a mark, then click the empty area outside the image and inside it.
+            guard let window = NSApp.windows.first(where: { $0.isVisible && findCanvas(in: $0.contentView) != nil }),
+                  let canvas = findCanvas(in: window.contentView), let mark = canvas.annotations.last else {
+                Log.write("selftest: no open editor with marks")
+                return
+            }
+            func click(_ view: NSView, _ pointInWindow: NSPoint) {
+                for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                    let event = NSEvent.mouseEvent(with: type, location: pointInWindow, modifierFlags: [],
+                                                   timestamp: ProcessInfo.processInfo.systemUptime,
+                                                   windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                                                   clickCount: 1, pressure: 1)!
+                    if type == .leftMouseDown { view.mouseDown(with: event) } else { view.mouseUp(with: event) }
+                }
+            }
+            canvas.tool = .select
+            let onMark = canvas.convert(CGPoint(x: mark.bounds.midX, y: mark.bounds.midY), to: nil)
+            click(canvas, onMark)
+            let first = canvas.hasSelection
+            if let clip = canvas.superview { click(clip, NSPoint(x: 4, y: 4)) }
+            let afterOutside = canvas.hasSelection
+            click(canvas, onMark)
+            let second = canvas.hasSelection
+            click(canvas, canvas.convert(CGPoint(x: 3, y: canvas.bounds.height - 3), to: nil))
+            Log.write("selftest: selected=\(first), after click outside image=\(afterOutside), reselected=\(second), after click on empty image=\(canvas.hasSelection)")
         case "reopen":
             // Reopen an edited capture: the marks should be back and still editable.
             guard let path = items.first(where: { $0.name == "path" })?.value else { return }

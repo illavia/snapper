@@ -93,6 +93,17 @@ final class CanvasView: NSView, NSTextFieldDelegate {
 
     func markSaved() { isModified = false }
 
+    var hasSelection: Bool { selected != nil }
+
+    /// Called when the click lands outside the image: finish any typing and drop the selection.
+    func clearSelection() {
+        commitTextEditing()
+        selected = nil
+        draft = nil
+        cropRect = nil
+        needsDisplay = true
+    }
+
     /// Removes every mark and any crop. Undoable like any other edit.
     func revert(to original: CGImage) {
         commitTextEditing()

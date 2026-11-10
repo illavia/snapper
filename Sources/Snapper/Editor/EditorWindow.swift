@@ -225,6 +225,16 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
 
 /// Keeps a small image centred in the scroll view.
 private final class CenteringClipView: NSClipView {
+    /// A click on the empty area around the image deselects, like clicking empty space inside it.
+    override func mouseDown(with event: NSEvent) {
+        if let canvas = documentView as? CanvasView {
+            canvas.clearSelection()
+            window?.makeFirstResponder(canvas)
+        } else {
+            super.mouseDown(with: event)
+        }
+    }
+
     override func constrainBoundsRect(_ proposedBounds: NSRect) -> NSRect {
         var rect = super.constrainBoundsRect(proposedBounds)
         guard let document = documentView else { return rect }
