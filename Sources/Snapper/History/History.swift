@@ -17,11 +17,14 @@ final class HistoryModel: ObservableObject {
     func reload() {
         let files = FileStore.recent(limit: 300)
         let calendar = Calendar.current
+        // Order by when the capture was taken, so editing an old one does not move it to the top.
+        let dated = files.map { file -> (URL, Date) in
+            let values = try? file.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
+            return (file, values?.creationDate ?? values?.contentModificationDate ?? .distantPast)
+        }.sorted { $0.1 > $1.1 }
         var order: [Date] = []
         var groups: [Date: [URL]] = [:]
-        for file in files {
-            let values = try? file.resourceValues(forKeys: [.creationDateKey, .contentModificationDateKey])
-            let date = values?.creationDate ?? values?.contentModificationDate ?? .distantPast
+        for (file, date) in dated {
             let day = calendar.startOfDay(for: date)
             if groups[day] == nil { order.append(day) }
             groups[day, default: []].append(file)

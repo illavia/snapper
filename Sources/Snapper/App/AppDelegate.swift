@@ -339,6 +339,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let path = items.first(where: { $0.name == "path" })?.value { menuShot(to: path) }
             case "pin": capturePin()
             case "closepins": PinController.shared.closeAll()
+            case "appearance":
+                // Test hook: force light or dark for this run only. Anything else follows the system again.
+                let mode = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "mode" })?.value
+                NSApp.appearance = mode == "light" ? NSAppearance(named: .aqua) : (mode == "dark" ? NSAppearance(named: .darkAqua) : nil)
             case "thumbbuttons": ThumbnailController.shared.revealButtonsForSnapshot()
             case "rect", "scrollrect", "textrect", "pinrect":
                 let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
