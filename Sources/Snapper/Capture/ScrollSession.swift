@@ -216,7 +216,7 @@ final class ScrollSession {
         let background = NSView(frame: NSRect(origin: .zero, size: size))
         background.wantsLayer = true
         background.layer?.cornerRadius = 16
-        background.layer?.backgroundColor = NSColor(white: 0.08, alpha: 0.94).cgColor
+        background.layer?.backgroundColor = NSColor(white: 0.1, alpha: 1).cgColor
         background.layer?.borderColor = NSColor.white.withAlphaComponent(0.35).cgColor
         background.layer?.borderWidth = 1
 
@@ -238,11 +238,19 @@ final class ScrollSession {
         stack.distribution = .fill
         stack.alignment = .centerY
         stack.edgeInsets = NSEdgeInsets(top: 0, left: 20, bottom: 0, right: 12)
-        stack.frame = background.bounds
-        stack.autoresizingMask = [.width, .height]
         label.setContentHuggingPriority(.defaultLow, for: .horizontal)
         label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        stack.translatesAutoresizingMaskIntoConstraints = false
         background.addSubview(stack)
+        NSLayoutConstraint.activate([
+            stack.leadingAnchor.constraint(equalTo: background.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: background.trailingAnchor),
+            stack.topAnchor.constraint(equalTo: background.topAnchor),
+            stack.bottomAnchor.constraint(equalTo: background.bottomAnchor),
+            done.centerYAnchor.constraint(equalTo: background.centerYAnchor),
+            cancel.centerYAnchor.constraint(equalTo: background.centerYAnchor),
+            label.centerYAnchor.constraint(equalTo: background.centerYAnchor),
+        ])
         hud.contentView = background
         hud.orderFrontRegardless()
         self.hud = hud
