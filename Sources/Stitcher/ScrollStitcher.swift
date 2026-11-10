@@ -42,6 +42,8 @@ public final class ScrollStitcher {
     private var position = 0
     /// Rows at the bottom of the canvas that may be a sticky footer.
     private var tailFooter = 0
+    private var misses = 0
+    private let restartAfterMisses = 8
 
     private let blocks = 16
     /// Mean luminance difference per pixel under which two rows count as the same.
@@ -81,8 +83,17 @@ public final class ScrollStitcher {
         }
 
         guard let offset = findOffset(previous: previous, current: current, top: top, bottom: bottom) else {
+            // If nothing has been stitched yet and the view keeps disagreeing with the first frame,
+            // the first frame was probably taken mid-change (page still loading). Start again from here.
+            misses += 1
+            if totalHeight == frameHeight, misses >= restartAfterMisses {
+                totalHeight = 0
+                misses = 0
+                return add(frame)
+            }
             return .noMatch
         }
+        misses = 0
 
         previous = current
         position += offset

@@ -3,24 +3,31 @@ import Carbon.HIToolbox
 import ScreenCaptureKit
 import Stitcher
 
-extension CaptureEngine {
-    /// Captures only `rect` (points, top-left origin, relative to the display), leaving out Snapper's windows.
-    static func captureRegion(_ rect: CGRect, on screen: NSScreen) async throws -> CGImage {
-        guard hasPermission else { throw CaptureError.noPermission }
+/// Grabs frames of one region repeatedly. The content filter is built once, which keeps each grab fast.
+final class RegionGrabber {
+    private let filter: SCContentFilter
+    private let config: SCStreamConfiguration
+
+    /// `rect` is in points, top-left origin, relative to the display. Snapper's own windows are left out.
+    init(rect: CGRect, screen: NSScreen) async throws {
+        guard CaptureEngine.hasPermission else { throw CaptureError.noPermission }
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let id = screen.displayID,
               let display = content.displays.first(where: { $0.displayID == id }) else { throw CaptureError.noDisplay }
         let pid = ProcessInfo.processInfo.processIdentifier
         let mine = content.windows.filter { $0.owningApplication?.processID == pid }
-        let filter = SCContentFilter(display: display, excludingWindows: mine)
-        let config = SCStreamConfiguration()
+        filter = SCContentFilter(display: display, excludingWindows: mine)
+        config = SCStreamConfiguration()
         let scale = screen.backingScaleFactor
         config.sourceRect = rect
         config.width = Int((rect.width * scale).rounded())
         config.height = Int((rect.height * scale).rounded())
         config.showsCursor = false
         config.captureResolution = .best
-        return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+    }
+
+    func grab() async throws -> CGImage {
+        try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
     }
 }
 
@@ -69,6 +76,11 @@ final class ScrollSession {
     private var hud: NSPanel?
     private var label: NSTextField?
     private var misses = 0
+    private var failures = 0
+    private var grabber: RegionGrabber?
+    private var frames = 0
+    private var lost = 0
+    private var busy: TimeInterval = 0
 
     static func start(rect: CGRect, screen: NSScreen, completion: @escaping (CGImage, CGFloat) -> Void) {
         guard current == nil else { return }
@@ -97,13 +109,24 @@ final class ScrollSession {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.step()
-                try? await Task.sleep(nanoseconds: 70_000_000)
+                try? await Task.sleep(nanoseconds: 15_000_000)
             }
         }
     }
 
     private func step() async {
-        guard let image = try? await CaptureEngine.captureRegion(rect, on: screen) else { return }
+        let image: CGImage
+        let began = Date()
+        do {
+            if grabber == nil { grabber = try await RegionGrabber(rect: rect, screen: screen) }
+            image = try await grabber!.grab()
+        } catch {
+            failures += 1
+            if failures == 1 { Log.write("scrolling: frame capture failed: \(error.localizedDescription)") }
+            if failures >= 3 { setStatus("Cannot capture this area", warn: true) }
+            return
+        }
+        failures = 0
         if colorSpace == nil { colorSpace = image.colorSpace }
         let stitcher = self.stitcher
         let outcome = await Task.detached(priority: .userInitiated) { () -> ScrollStitcher.Outcome? in
@@ -111,11 +134,14 @@ final class ScrollSession {
             return stitcher.add(frame)
         }.value
         guard !Task.isCancelled, let outcome else { return }
+        frames += 1
+        if case .noMatch = outcome { lost += 1 }
+        busy += Date().timeIntervalSince(began)
 
         switch outcome {
         case .noMatch:
             misses += 1
-            if misses >= 3 { setStatus("Lost my place. Scroll back up a little, then continue slowly", warn: true) }
+            if misses >= 12 { setStatus("Lost my place. Scroll back up a little, then continue slowly", warn: true) }
         case .first, .appended, .moved:
             misses = 0
             setStatus("Scroll down slowly · \(stitcher.totalHeight) px tall", warn: false)
@@ -146,6 +172,7 @@ final class ScrollSession {
                 Log.write("scrolling: nothing captured")
                 return
             }
+            Log.write("scrolling: \(self.frames) frames, \(self.lost) not matched, \(Int(self.busy / Double(max(self.frames, 1)) * 1000)) ms per frame")
             completion(image, CGFloat(frame.width) / rect.width)
         }
     }

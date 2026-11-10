@@ -148,11 +148,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     /// Direct rectangle capture with no overlay, used by the snapper:// URL hook.
-    func captureRect(_ rect: CGRect) {
+    func captureRect(_ rect: CGRect, on screen: NSScreen) {
         Task {
             do {
-                let screen = NSScreen.screens.first ?? NSScreen.underMouse
                 let (image, scale) = try await CaptureEngine.captureRect(rect, on: screen)
+                CaptureEngine.includeOwnWindows = false
                 deliver(image, scale: scale, kind: "rect")
             } catch { report(error) }
         }
@@ -207,13 +207,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             case "fullscreen": captureFullScreen()
             case "scroll": captureScrolling()
             case "history": HistoryWindowController.shared.show()
-            case "rect":
+            case "scrolldone": ScrollSession.finishCurrent()
+            case "selftest":
+                let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                SelfTest.run(kind: items.first(where: { $0.name == "kind" })?.value ?? "", items: items, delegate: self)
+            case "open":
+                let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                if let path = items.first(where: { $0.name == "path" })?.value {
+                    EditorWindowController.open(file: URL(fileURLWithPath: path))
+                }
+            case "rect", "scrollrect":
                 let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
                 func value(_ name: String) -> CGFloat {
                     CGFloat(Double(items.first(where: { $0.name == name })?.value ?? "") ?? 0)
                 }
-                let rect = CGRect(x: value("x"), y: value("y"), width: value("w"), height: value("h"))
-                if rect.width > 0, rect.height > 0 { captureRect(rect) }
+                // Coordinates are global, top-left origin of the primary display.
+                let global = CGRect(x: value("x"), y: value("y"), width: value("w"), height: value("h"))
+                guard global.width > 0, global.height > 0 else { break }
+                let screen = NSScreen.screens.first(where: {
+                    CGRect(origin: $0.quartzOrigin, size: $0.frame.size).contains(CGPoint(x: global.midX, y: global.midY))
+                }) ?? NSScreen.screens[0]
+                let rect = global.offsetBy(dx: -screen.quartzOrigin.x, dy: -screen.quartzOrigin.y)
+                if url.host == "rect" {
+                    CaptureEngine.includeOwnWindows = items.contains(where: { $0.name == "own" })
+                    captureRect(rect, on: screen)
+                } else {
+                    ScrollSession.start(rect: rect, screen: screen) { [weak self] image, scale in
+                        self?.deliver(image, scale: scale, kind: "scrolling")
+                    }
+                }
             default: break
             }
         }

@@ -71,7 +71,7 @@ private struct HistoryView: View {
                 }
             }
         }
-        .frame(minWidth: 480, minHeight: 320)
+        .frame(minWidth: 480, idealWidth: 860, minHeight: 320, idealHeight: 600)
     }
 }
 

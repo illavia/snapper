@@ -110,4 +110,18 @@ final class ScrollStitcherTests: XCTestCase {
         XCTAssertEqual(stitcher.add(changed), .noMatch)
         XCTAssertEqual(stitcher.totalHeight, 200)
     }
+
+    func testBadFirstFrameIsReplacedBeforeAnythingIsStitched() {
+        let stale = makePage(width: 160, height: 300, seed: 8)
+        let page = makePage(width: 160, height: 900, seed: 9)
+        let stitcher = ScrollStitcher()
+        stitcher.add(stale)
+        var outcomes: [ScrollStitcher.Outcome] = []
+        for _ in 0..<8 { outcomes.append(stitcher.add(view(page, offset: 0, viewHeight: 300))) }
+        XCTAssertEqual(outcomes.last, .first)
+        XCTAssertEqual(stitcher.add(view(page, offset: 200, viewHeight: 300)), .appended(rows: 200))
+        XCTAssertEqual(stitcher.add(view(page, offset: 400, viewHeight: 300)), .appended(rows: 200))
+        XCTAssertEqual(stitcher.add(view(page, offset: 600, viewHeight: 300)), .appended(rows: 200))
+        XCTAssertTrue(stitcher.result() == page, "stitched image differs from the page")
+    }
 }

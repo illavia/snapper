@@ -24,6 +24,9 @@ struct Frozen {
 enum CaptureEngine {
     static var hasPermission: Bool { CGPreflightScreenCaptureAccess() }
 
+    /// Normally Snapper's own windows (thumbnail, editor) are left out of captures. Tests turn this off.
+    static var includeOwnWindows = false
+
     /// Captures a whole display, leaving out Snapper's own windows.
     static func captureDisplay(_ screen: NSScreen) async throws -> Frozen {
         guard hasPermission else { throw CaptureError.noPermission }
@@ -33,7 +36,7 @@ enum CaptureEngine {
             throw CaptureError.noDisplay
         }
         let pid = ProcessInfo.processInfo.processIdentifier
-        let mine = content.windows.filter { $0.owningApplication?.processID == pid }
+        let mine = includeOwnWindows ? [] : content.windows.filter { $0.owningApplication?.processID == pid }
         let filter = SCContentFilter(display: display, excludingWindows: mine)
         let config = SCStreamConfiguration()
         let scale = screen.backingScaleFactor
