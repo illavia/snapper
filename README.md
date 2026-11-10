@@ -57,6 +57,8 @@ Click a thumbnail, or open any capture from Recent Captures or history.
 | Crop | C | Drag the area to keep |
 
 Command-Z undoes, Shift-Command-Z redoes, Command-C copies the marked-up image, Command-S saves.
+The toolbar shows the zoom percentage: pinch to zoom, or use Command-= and Command--, Command-0 for
+actual size and Command-9 to fit the window.
 Closing the window saves any changes.
 
 Edits are never final. The PNG in the save folder is a normal flattened image, but Snapper also

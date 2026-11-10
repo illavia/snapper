@@ -205,6 +205,21 @@ enum SelfTest {
             let handled = canvas.control(field, textView: NSTextView(), doCommandBy: #selector(NSResponder.cancelOperation(_:)))
             let boxGone = canvas.subviews.compactMap({ $0 as? NSTextField }).isEmpty
             Log.write("selftest: esc handled=\(handled), box closed=\(boxGone), marks before=\(before) after=\(canvas.annotations.count)")
+        case "zoom":
+            // Step through the zoom commands and read back the label.
+            guard let window = NSApp.windows.first(where: { $0.isVisible && findCanvas(in: $0.contentView) != nil }),
+                  let canvas = findCanvas(in: window.contentView),
+                  let popup = allViews(in: window.contentView).compactMap({ $0 as? NSPopUpButton }).first else {
+                Log.write("selftest: no open editor")
+                return
+            }
+            var readings: [String] = ["start \(popup.item(at: 0)?.title ?? "?")"]
+            for (name, command) in [("actual", 0), ("in", 1), ("in", 1), ("out", -1), ("fit", 2)] {
+                canvas.onZoom?(command)
+                readings.append("\(name) \(popup.item(at: 0)?.title ?? "?")")
+            }
+            Log.write("selftest: zoom " + readings.joined(separator: ", "))
+            canvas.onZoom?(1); canvas.onZoom?(1)
         case "reopen":
             // Reopen an edited capture: the marks should be back and still editable.
             guard let path = items.first(where: { $0.name == "path" })?.value else { return }

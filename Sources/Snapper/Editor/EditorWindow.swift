@@ -11,6 +11,8 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
     private let colorWell = NSColorWell()
     private var file: URL?
     private var colourObservation: NSKeyValueObservation?
+    private let zoomPopup = NSPopUpButton(frame: .zero, pullsDown: true)
+    private var zoomObservers: [NSObjectProtocol] = []
     /// The capture before any marks or crop.
     private let original: CGImage
     private var originalNeedsStoring: Bool
@@ -60,6 +62,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         buildContent()
 
         canvas.onToolKey = { [weak self] tool in self?.select(tool) }
+        canvas.onZoom = { [weak self] command in self?.zoom(command) }
         canvas.onSelectColor = { [weak self] colour in self?.colorWell.color = colour }
         canvas.onCopy = { [weak self] in self?.copyImage() }
         canvas.onSave = { [weak self] in self?.save() }
@@ -109,7 +112,18 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         let revert = NSButton(title: "Revert", target: self, action: #selector(revertClicked))
         revert.bezelStyle = .texturedRounded
         revert.toolTip = "Remove every mark and crop, back to the original capture"
-        let bar = NSStackView(views: [tools, colorWell, undo, spacer, revert, save, copy])
+        zoomPopup.bezelStyle = .texturedRounded
+        zoomPopup.toolTip = "Zoom. Pinch, or use ⌘= and ⌘-"
+        zoomPopup.addItem(withTitle: "100%") // shown as the button's label
+        for (title, tag, key) in [("Zoom In", 1, "⌘="), ("Zoom Out", -1, "⌘-"), ("Actual Size (100%)", 0, "⌘0"),
+                                  ("Fit to Window", 2, "⌘9")] {
+            zoomPopup.addItem(withTitle: "\(title)    \(key)")
+            zoomPopup.lastItem?.tag = tag
+            zoomPopup.lastItem?.target = self
+            zoomPopup.lastItem?.action = #selector(zoomMenuChosen(_:))
+        }
+        zoomPopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 76).isActive = true
+        let bar = NSStackView(views: [tools, colorWell, undo, zoomPopup, spacer, revert, save, copy])
         bar.orientation = .horizontal
         bar.spacing = 10
         bar.edgeInsets = NSEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
@@ -156,10 +170,56 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         DockPresence.windowOpened()
         window.makeKeyAndOrderFront(nil)
         window.layoutIfNeeded()
-        let available = scrollView.contentSize
-        let fit = min(available.width / max(imageSize.width, 1), available.height / max(imageSize.height, 1), 1)
-        scrollView.magnification = max(fit * 0.98, scrollView.minMagnification)
+        zoom(2)
+        watchZoom()
         window.makeFirstResponder(canvas)
+    }
+
+    // MARK: Zoom
+
+    /// The magnification at which the whole image fits, never above 100%.
+    private var fitMagnification: CGFloat {
+        let available = scrollView.contentSize
+        let size = canvas.frame.size
+        let fit = min(available.width / max(size.width, 1), available.height / max(size.height, 1), 1)
+        return max(fit * 0.98, scrollView.minMagnification)
+    }
+
+    /// 1 zoom in, -1 zoom out, 0 actual size, 2 fit to window.
+    private func zoom(_ command: Int) {
+        let current = scrollView.magnification
+        let target: CGFloat
+        switch command {
+        case 1: target = current * 1.25
+        case -1: target = current / 1.25
+        case 0: target = 1
+        default: target = fitMagnification
+        }
+        let clamped = min(max(target, scrollView.minMagnification), scrollView.maxMagnification)
+        let visible = scrollView.documentVisibleRect
+        scrollView.setMagnification(clamped, centeredAt: NSPoint(x: visible.midX, y: visible.midY))
+        updateZoomLabel()
+    }
+
+    @objc private func zoomMenuChosen(_ sender: NSMenuItem) {
+        zoom(sender.tag)
+        window.makeFirstResponder(canvas)
+    }
+
+    private func updateZoomLabel() {
+        zoomPopup.item(at: 0)?.title = "\(Int((scrollView.magnification * 100).rounded()))%"
+    }
+
+    /// Pinching changes the zoom without going through `zoom`, so watch the view for it.
+    private func watchZoom() {
+        scrollView.contentView.postsBoundsChangedNotifications = true
+        let centre = NotificationCenter.default
+        for (name, object) in [(NSView.boundsDidChangeNotification, scrollView.contentView as AnyObject),
+                               (NSScrollView.didEndLiveMagnifyNotification, scrollView as AnyObject)] {
+            zoomObservers.append(centre.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.updateZoomLabel() }
+            })
+        }
     }
 
     private func select(_ tool: Tool) {
@@ -227,6 +287,8 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         // Save on close. Nothing is lost: the original and the marks are kept, so it can be reopened and changed.
         if canvas.isModified { save() }
+        zoomObservers.forEach { NotificationCenter.default.removeObserver($0) }
+        zoomObservers.removeAll()
         Self.open.removeAll { $0 === self }
         DockPresence.windowClosed()
     }

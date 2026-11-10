@@ -26,6 +26,13 @@ enum MainMenu {
         edit.addItem(withTitle: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         add(edit, to: main, title: "Edit")
 
+        let view = NSMenu(title: "View")
+        view.addItem(withTitle: "Zoom In", action: Selector(("snapperZoomIn:")), keyEquivalent: "=")
+        view.addItem(withTitle: "Zoom Out", action: Selector(("snapperZoomOut:")), keyEquivalent: "-")
+        view.addItem(withTitle: "Actual Size", action: Selector(("snapperZoomActual:")), keyEquivalent: "0")
+        view.addItem(withTitle: "Fit to Window", action: Selector(("snapperZoomFit:")), keyEquivalent: "9")
+        add(view, to: main, title: "View")
+
         return main
     }
 

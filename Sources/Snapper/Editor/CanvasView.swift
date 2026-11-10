@@ -15,6 +15,8 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     var onToolKey: ((Tool) -> Void)?
     var onCopy: (() -> Void)?
     var onSave: (() -> Void)?
+    /// 1 zoom in, -1 zoom out, 0 actual size, 2 fit to window.
+    var onZoom: ((Int) -> Void)?
     var onChange: (() -> Void)?
 
     /// The current crop, in pixels of the original image. Nil when uncropped.
@@ -154,6 +156,10 @@ final class CanvasView: NSView, NSTextFieldDelegate {
 
     @objc func copy(_ sender: Any?) { onCopy?() }
     @objc func saveDocument(_ sender: Any?) { onSave?() }
+    @objc func snapperZoomIn(_ sender: Any?) { onZoom?(1) }
+    @objc func snapperZoomOut(_ sender: Any?) { onZoom?(-1) }
+    @objc func snapperZoomActual(_ sender: Any?) { onZoom?(0) }
+    @objc func snapperZoomFit(_ sender: Any?) { onZoom?(2) }
 
     // MARK: Mouse
 
