@@ -18,7 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         HotKeyCenter.shared.register(id: 2, keyCode: HotKey.keyF, modifiers: HotKey.controlShift) { [weak self] in
             self?.captureFullScreen()
         }
-        HotKeyCenter.shared.register(id: 3, keyCode: HotKey.keyS, modifiers: HotKey.controlShift) { [weak self] in
+        HotKeyCenter.shared.register(id: 3, keyCode: HotKey.key2, modifiers: HotKey.commandShift) { [weak self] in
             self?.captureScrolling()
         }
 
@@ -32,7 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.addItem(item("Capture Region or Window", #selector(menuCapture), key: "c"))
         menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), key: "f"))
-        menu.addItem(item("Scrolling Capture", #selector(menuScrolling), key: "s"))
+        menu.addItem(item("Scrolling Capture", #selector(menuScrolling), key: "2", modifiers: [.command, .shift]))
         menu.addItem(.separator())
 
         let recent = FileStore.recent(limit: 8)

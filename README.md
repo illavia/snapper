@@ -10,7 +10,7 @@ text, highlights, numbered steps and crop.
 |---|---|
 | Control-Shift-C | Capture a region (drag) or a window (click) |
 | Control-Shift-F | Capture the full screen |
-| Control-Shift-S | Scrolling capture: pick the area, scroll down slowly, press Return |
+| Shift-Command-2 | Scrolling capture: pick the area, scroll down slowly, press Return |
 
 ## Build
 
