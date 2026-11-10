@@ -192,8 +192,10 @@ final class ShortcutStore: ObservableObject {
     func registerAll() {
         guard !suspended else { return }
         var failed: Set<ShortcutAction> = []
+        // Release every shortcut first. Registering one at a time fails when two actions trade keys,
+        // because the second still holds the keys the first is asking for.
+        for action in ShortcutAction.allCases { HotKeyCenter.shared.unregister(id: action.hotKeyID) }
         for action in ShortcutAction.allCases {
-            HotKeyCenter.shared.unregister(id: action.hotKeyID)
             guard let shortcut = shortcuts[action], let handler = handlers[action] else { continue }
             if !HotKeyCenter.shared.register(id: action.hotKeyID, keyCode: shortcut.keyCode,
                                              modifiers: shortcut.modifiers, handler: handler) {
