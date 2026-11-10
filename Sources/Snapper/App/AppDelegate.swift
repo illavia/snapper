@@ -30,6 +30,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        menu.addItem(item("About Snapper", #selector(menuAbout)))
+        menu.addItem(.separator())
         menu.addItem(item("Capture Region or Window", #selector(menuCapture), key: "c"))
         menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), key: "f"))
         menu.addItem(item("Scrolling Capture", #selector(menuScrolling), key: "2", modifiers: [.command, .shift]))
@@ -81,6 +83,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let url = sender.representedObject as? URL { EditorWindowController.open(file: url) }
     }
     @objc private func menuQuit() { NSApp.terminate(nil) }
+
+    @objc private func menuAbout() {
+        let body = NSMutableParagraphStyle()
+        body.alignment = .center
+        body.paragraphSpacing = 4
+        let credits = NSAttributedString(
+            string: "Developed by Jawaz Illavia\n\nScreenshots straight to the clipboard:\nregion, window, full screen and scrolling.\n\nBuilt with Claude Code.",
+            attributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.labelColor,
+                         .paragraphStyle: body])
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Snapper", .credits: credits])
+    }
 
     @objc private func menuChooseFolder() {
         NSApp.activate(ignoringOtherApps: true)
@@ -207,6 +221,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             case "fullscreen": captureFullScreen()
             case "scroll": captureScrolling()
             case "history": HistoryWindowController.shared.show()
+            case "about": menuAbout()
             case "scrolldone": ScrollSession.finishCurrent()
             case "selftest":
                 let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
