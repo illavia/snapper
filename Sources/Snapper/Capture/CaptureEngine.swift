@@ -30,11 +30,13 @@ enum CaptureEngine {
     /// Captures a whole display, leaving out Snapper's own windows.
     static func captureDisplay(_ screen: NSScreen) async throws -> Frozen {
         guard hasPermission else { throw CaptureError.noPermission }
+        let began = Date()
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         guard let id = screen.displayID,
               let display = content.displays.first(where: { $0.displayID == id }) else {
             throw CaptureError.noDisplay
         }
+        let listed = Date()
         let pid = ProcessInfo.processInfo.processIdentifier
         let mine = includeOwnWindows ? [] : content.windows.filter { $0.owningApplication?.processID == pid }
         let filter = SCContentFilter(display: display, excludingWindows: mine)
@@ -45,6 +47,7 @@ enum CaptureEngine {
         config.showsCursor = false
         config.captureResolution = .best
         let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+        Log.write("grab: \(image.width)x\(image.height) window list \(Int(listed.timeIntervalSince(began) * 1000)) ms, pixels \(Int(Date().timeIntervalSince(listed) * 1000)) ms")
         return Frozen(image: image, screen: screen)
     }
 

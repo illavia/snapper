@@ -173,6 +173,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func deliver(_ image: CGImage, scale: CGFloat, kind: String) {
+        let began = Date()
         guard let shot = Shot(image: image, scale: scale) else {
             Log.write("\(kind): could not encode image")
             return
@@ -183,6 +184,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             Log.write("\(kind): save failed: \(error.localizedDescription)")
         }
         Log.write("\(kind): \(image.width)x\(image.height) clipboard=\(copied) file=\(saved?.path ?? "none")")
+        Log.write("\(kind): encode, clipboard and save took \(Int(Date().timeIntervalSince(began) * 1000)) ms")
 
         var warning: String?
         if !copied { warning = "Not copied to clipboard" } else if saved == nil { warning = "Copied, but not saved" }
