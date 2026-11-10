@@ -1,0 +1,238 @@
+import AppKit
+import Carbon.HIToolbox
+import ScreenCaptureKit
+import Stitcher
+
+extension CaptureEngine {
+    /// Captures only `rect` (points, top-left origin, relative to the display), leaving out Snapper's windows.
+    static func captureRegion(_ rect: CGRect, on screen: NSScreen) async throws -> CGImage {
+        guard hasPermission else { throw CaptureError.noPermission }
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        guard let id = screen.displayID,
+              let display = content.displays.first(where: { $0.displayID == id }) else { throw CaptureError.noDisplay }
+        let pid = ProcessInfo.processInfo.processIdentifier
+        let mine = content.windows.filter { $0.owningApplication?.processID == pid }
+        let filter = SCContentFilter(display: display, excludingWindows: mine)
+        let config = SCStreamConfiguration()
+        let scale = screen.backingScaleFactor
+        config.sourceRect = rect
+        config.width = Int((rect.width * scale).rounded())
+        config.height = Int((rect.height * scale).rounded())
+        config.showsCursor = false
+        config.captureResolution = .best
+        return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+    }
+}
+
+extension PixelFrame {
+    init?(_ image: CGImage) {
+        let width = image.width, height = image.height
+        var data = [UInt8](repeating: 0, count: width * height * 4)
+        let space = image.colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        let ok = data.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue) else { return false }
+            context.interpolationQuality = .none
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard ok else { return nil }
+        self.init(width: width, height: height, data: data)
+    }
+
+    func cgImage(colorSpace: CGColorSpace?) -> CGImage? {
+        let space = colorSpace.flatMap { $0.model == .rgb ? $0 : nil } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let provider = CGDataProvider(data: Data(data) as CFData) else { return nil }
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4,
+                       space: space, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
+    }
+}
+
+/// Scrolling capture: the user scrolls, frames of the chosen region are stitched as they arrive.
+@MainActor
+final class ScrollSession {
+    private static var current: ScrollSession?
+    static var isActive: Bool { current != nil }
+
+    /// Stop before the image becomes unusably tall.
+    private static let maxHeight = 40_000
+
+    private let rect: CGRect
+    private let screen: NSScreen
+    private let completion: (CGImage, CGFloat) -> Void
+    private let stitcher = ScrollStitcher()
+    private var colorSpace: CGColorSpace?
+    private var loop: Task<Void, Never>?
+    private var border: NSWindow?
+    private var hud: NSPanel?
+    private var label: NSTextField?
+    private var misses = 0
+
+    static func start(rect: CGRect, screen: NSScreen, completion: @escaping (CGImage, CGFloat) -> Void) {
+        guard current == nil else { return }
+        let session = ScrollSession(rect: rect, screen: screen, completion: completion)
+        current = session
+        session.begin()
+    }
+
+    /// Test hook and safety net.
+    static func finishCurrent() { current?.finish(deliver: true) }
+    static func cancelCurrent() { current?.finish(deliver: false) }
+
+    private init(rect: CGRect, screen: NSScreen, completion: @escaping (CGImage, CGFloat) -> Void) {
+        self.rect = rect
+        self.screen = screen
+        self.completion = completion
+    }
+
+    private func begin() {
+        showChrome()
+        HotKeyCenter.shared.register(id: 101, keyCode: UInt32(kVK_Return), modifiers: 0) { ScrollSession.finishCurrent() }
+        HotKeyCenter.shared.register(id: 102, keyCode: UInt32(kVK_Escape), modifiers: 0) { ScrollSession.cancelCurrent() }
+        Log.write("scrolling: started \(Int(rect.width))x\(Int(rect.height)) pt")
+
+        loop = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                await self.step()
+                try? await Task.sleep(nanoseconds: 70_000_000)
+            }
+        }
+    }
+
+    private func step() async {
+        guard let image = try? await CaptureEngine.captureRegion(rect, on: screen) else { return }
+        if colorSpace == nil { colorSpace = image.colorSpace }
+        let stitcher = self.stitcher
+        let outcome = await Task.detached(priority: .userInitiated) { () -> ScrollStitcher.Outcome? in
+            guard let frame = PixelFrame(image) else { return nil }
+            return stitcher.add(frame)
+        }.value
+        guard !Task.isCancelled, let outcome else { return }
+
+        switch outcome {
+        case .noMatch:
+            misses += 1
+            if misses >= 3 { setStatus("Lost my place. Scroll back up a little, then continue slowly", warn: true) }
+        case .first, .appended, .moved:
+            misses = 0
+            setStatus("Scroll down slowly · \(stitcher.totalHeight) px tall", warn: false)
+        case .unchanged:
+            if misses == 0 { setStatus("Scroll down slowly · \(stitcher.totalHeight) px tall", warn: false) }
+        }
+        if stitcher.totalHeight >= Self.maxHeight { finish(deliver: true) }
+    }
+
+    private func finish(deliver: Bool) {
+        guard Self.current === self else { return }
+        Self.current = nil
+        loop?.cancel()
+        HotKeyCenter.shared.unregister(id: 101)
+        HotKeyCenter.shared.unregister(id: 102)
+        border?.orderOut(nil)
+        hud?.orderOut(nil)
+
+        guard deliver else {
+            Log.write("scrolling: cancelled")
+            return
+        }
+        let stitcher = self.stitcher, space = colorSpace, rect = self.rect, completion = self.completion
+        Task {
+            // Let an in-flight frame finish before reading the result.
+            _ = await loop?.value
+            guard let frame = stitcher.result(), let image = frame.cgImage(colorSpace: space) else {
+                Log.write("scrolling: nothing captured")
+                return
+            }
+            completion(image, CGFloat(frame.width) / rect.width)
+        }
+    }
+
+    // MARK: On-screen chrome (left out of the capture because it belongs to Snapper)
+
+    private func showChrome() {
+        // rect is top-left based; AppKit windows are bottom-left based.
+        let frame = CGRect(x: screen.frame.minX + rect.minX, y: screen.frame.maxY - rect.maxY,
+                           width: rect.width, height: rect.height)
+
+        let border = NSWindow(contentRect: frame.insetBy(dx: -3, dy: -3), styleMask: .borderless,
+                              backing: .buffered, defer: false)
+        border.isOpaque = false
+        border.backgroundColor = .clear
+        border.hasShadow = false
+        border.ignoresMouseEvents = true
+        border.level = .statusBar
+        border.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        border.isReleasedWhenClosed = false
+        border.contentView = BorderView(frame: NSRect(origin: .zero, size: border.frame.size))
+        border.orderFrontRegardless()
+        self.border = border
+
+        let size = NSSize(width: 470, height: 40)
+        var origin = NSPoint(x: frame.midX - size.width / 2, y: frame.minY - size.height - 10)
+        if origin.y < screen.visibleFrame.minY + 4 { origin.y = frame.maxY + 10 }
+        if origin.y + size.height > screen.frame.maxY - 4 { origin.y = frame.minY + 10 }
+        origin.x = min(max(origin.x, screen.frame.minX + 4), screen.frame.maxX - size.width - 4)
+
+        let hud = NSPanel(contentRect: NSRect(origin: origin, size: size),
+                          styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        hud.isOpaque = false
+        hud.backgroundColor = .clear
+        hud.hasShadow = true
+        hud.level = .statusBar
+        hud.hidesOnDeactivate = false
+        hud.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        hud.isReleasedWhenClosed = false
+
+        let background = NSVisualEffectView(frame: NSRect(origin: .zero, size: size))
+        background.material = .hudWindow
+        background.state = .active
+        background.wantsLayer = true
+        background.layer?.cornerRadius = 10
+
+        let label = NSTextField(labelWithString: "Scroll down slowly")
+        label.font = .systemFont(ofSize: 12, weight: .medium)
+        label.textColor = .white
+        label.lineBreakMode = .byTruncatingTail
+        let done = NSButton(title: "Done ⏎", target: self, action: #selector(doneClicked))
+        done.bezelStyle = .rounded
+        done.controlSize = .small
+        let cancel = NSButton(title: "Cancel ⎋", target: self, action: #selector(cancelClicked))
+        cancel.bezelStyle = .rounded
+        cancel.controlSize = .small
+
+        let stack = NSStackView(views: [label, done, cancel])
+        stack.orientation = .horizontal
+        stack.spacing = 8
+        stack.edgeInsets = NSEdgeInsets(top: 0, left: 12, bottom: 0, right: 10)
+        stack.frame = background.bounds
+        stack.autoresizingMask = [.width, .height]
+        label.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        background.addSubview(stack)
+        hud.contentView = background
+        hud.orderFrontRegardless()
+        self.hud = hud
+        self.label = label
+    }
+
+    private func setStatus(_ text: String, warn: Bool) {
+        label?.stringValue = text
+        label?.textColor = warn ? .systemYellow : .white
+    }
+
+    @objc private func doneClicked() { finish(deliver: true) }
+    @objc private func cancelClicked() { finish(deliver: false) }
+}
+
+private final class BorderView: NSView {
+    override func draw(_ dirtyRect: NSRect) {
+        NSColor.systemRed.setStroke()
+        let path = NSBezierPath(rect: bounds.insetBy(dx: 1.5, dy: 1.5))
+        path.lineWidth = 2
+        path.setLineDash([6, 4], count: 2, phase: 0)
+        path.stroke()
+    }
+}
