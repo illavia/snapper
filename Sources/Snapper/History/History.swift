@@ -97,7 +97,7 @@ private struct HistoryView: View {
             if model.days.isEmpty {
                 VStack(spacing: 8) {
                     Text("No captures yet").font(.title3)
-                    Text("Press § to take one.").foregroundStyle(.secondary)
+                    Text("Take one from the menu bar icon or with your capture shortcut.").foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {

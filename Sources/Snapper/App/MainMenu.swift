@@ -7,6 +7,8 @@ enum MainMenu {
         let main = NSMenu()
 
         let appMenu = NSMenu()
+        appMenu.addItem(withTitle: "Settings…", action: Selector(("showSettings:")), keyEquivalent: ",")
+        appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit Snapper", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         add(appMenu, to: main, title: "Snapper")
 

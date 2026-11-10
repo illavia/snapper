@@ -220,6 +220,25 @@ enum SelfTest {
             }
             Log.write("selftest: zoom " + readings.joined(separator: ", "))
             canvas.onZoom?(1); canvas.onZoom?(1)
+        case "record":
+            // Record a shortcut through the real recorder box: click it, then press Command-Shift-9.
+            SettingsWindowController.shared.show()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                guard let window = NSApp.windows.first(where: { $0.title == "Snapper Settings" }),
+                      let field = allViews(in: window.contentView).compactMap({ $0 as? RecorderField }).first else {
+                    Log.write("selftest: settings recorder not found")
+                    return
+                }
+                window.makeFirstResponder(field)
+                let recording = field.isRecording
+                if let press = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command, .shift],
+                                                timestamp: ProcessInfo.processInfo.systemUptime,
+                                                windowNumber: window.windowNumber, context: nil, characters: "9",
+                                                charactersIgnoringModifiers: "9", isARepeat: false, keyCode: 25) {
+                    _ = field.performKeyEquivalent(with: press)
+                }
+                Log.write("selftest: recorder armed=\(recording), capture is now \(ShortcutStore.shared.shortcuts[.capture]?.display ?? "none"), still recording=\(field.isRecording)")
+            }
         case "reopen":
             // Reopen an edited capture: the marks should be back and still editable.
             guard let path = items.first(where: { $0.name == "path" })?.value else { return }

@@ -1,5 +1,4 @@
 import AppKit
-import ServiceManagement
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -12,27 +11,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         statusItem.menu = menu
 
-        HotKeyCenter.shared.register(id: 1, keyCode: HotKey.keyC, modifiers: HotKey.optionShift) { [weak self] in
-            self?.captureInteractive()
-        }
-        HotKeyCenter.shared.register(id: 2, keyCode: HotKey.keyF, modifiers: HotKey.optionShift) { [weak self] in
-            self?.captureFullScreen()
-        }
-        HotKeyCenter.shared.register(id: 3, keyCode: HotKey.keyS, modifiers: HotKey.optionShift) { [weak self] in
-            self?.captureScrolling()
-        }
-
-        // One-key capture: plain § with nothing held. Shift-§ still types ±.
-        let sectionOK = HotKeyCenter.shared.register(id: 6, keyCode: HotKey.keySection, modifiers: 0) { [weak self] in
-            self?.captureInteractive()
-        }
-        Log.write("section key shortcut registered: \(sectionOK)")
-        HotKeyCenter.shared.register(id: 4, keyCode: HotKey.keyT, modifiers: HotKey.optionShift) { [weak self] in
-            self?.captureText()
-        }
-        HotKeyCenter.shared.register(id: 5, keyCode: HotKey.keyP, modifiers: HotKey.optionShift) { [weak self] in
-            self?.capturePin()
-        }
+        let shortcuts = ShortcutStore.shared
+        shortcuts.setHandler(.capture) { [weak self] in self?.captureInteractive() }
+        shortcuts.setHandler(.captureAlt) { [weak self] in self?.captureInteractive() }
+        shortcuts.setHandler(.fullScreen) { [weak self] in self?.captureFullScreen() }
+        shortcuts.setHandler(.scrolling) { [weak self] in self?.captureScrolling() }
+        shortcuts.setHandler(.text) { [weak self] in self?.captureText() }
+        shortcuts.setHandler(.pin) { [weak self] in self?.capturePin() }
+        shortcuts.registerAll()
 
         if !CaptureEngine.hasPermission { CGRequestScreenCaptureAccess() }
         Log.write("launched, screen permission: \(CaptureEngine.hasPermission)")
@@ -46,11 +32,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.addItem(item("About Snapper", #selector(menuAbout)))
         menu.addItem(.separator())
-        menu.addItem(item("Capture Region or Window", #selector(menuCapture), key: "§", modifiers: []))
-        menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), key: "f"))
-        menu.addItem(item("Scrolling Capture", #selector(menuScrolling), key: "s"))
-        menu.addItem(item("Grab Text", #selector(menuText), key: "t"))
-        menu.addItem(item("Pin Region to Screen", #selector(menuPin), key: "p"))
+        let keys = ShortcutStore.shared.shortcuts
+        menu.addItem(item("Capture Region or Window", #selector(menuCapture), shortcut: keys[.capture] ?? keys[.captureAlt]))
+        menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), shortcut: keys[.fullScreen]))
+        menu.addItem(item("Scrolling Capture", #selector(menuScrolling), shortcut: keys[.scrolling]))
+        menu.addItem(item("Grab Text", #selector(menuText), shortcut: keys[.text]))
+        menu.addItem(item("Pin Region to Screen", #selector(menuPin), shortcut: keys[.pin]))
         if PinController.shared.count > 0 {
             menu.addItem(item("Close All Pins (\(PinController.shared.count))", #selector(menuClosePins)))
         }
@@ -74,13 +61,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(item("Show All Captures…", #selector(menuHistory)))
         menu.addItem(item("Open Screenshots Folder", #selector(menuOpenFolder)))
         menu.addItem(.separator())
-        menu.addItem(item("Change Save Folder…", #selector(menuChooseFolder)))
-        let login = item("Launch at Login", #selector(menuToggleLogin))
-        login.state = SMAppService.mainApp.status == .enabled ? .on : .off
-        menu.addItem(login)
+        menu.addItem(item("Settings…", #selector(showSettings(_:)), key: ",", modifiers: [.command]))
         menu.addItem(.separator())
         menu.addItem(item("Quit Snapper", #selector(menuQuit), key: "q", modifiers: [.command]))
     }
+
+    private func item(_ title: String, _ action: Selector, shortcut: Shortcut?) -> NSMenuItem {
+        guard let shortcut, !shortcut.menuKey.isEmpty else { return item(title, action) }
+        return item(title, action, key: shortcut.menuKey, modifiers: shortcut.cocoaModifiers)
+    }
+
+    @objc func showSettings(_ sender: Any?) { SettingsWindowController.shared.show() }
 
     private func item(_ title: String, _ action: Selector, key: String = "",
                       modifiers: NSEvent.ModifierFlags = [.option, .shift]) -> NSMenuItem {
@@ -116,29 +107,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                          .paragraphStyle: body])
         NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Snapper", .credits: credits])
-    }
-
-    @objc private func menuChooseFolder() {
-        NSApp.activate(ignoringOtherApps: true)
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.directoryURL = FileStore.folder
-        panel.prompt = "Save Captures Here"
-        if panel.runModal() == .OK, let url = panel.url { FileStore.folder = url }
-    }
-
-    @objc private func menuToggleLogin() {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
-            }
-        } catch {
-            Log.write("launch at login failed: \(error.localizedDescription)")
-        }
     }
 
     /// Lets the menu finish closing so it is not in the screenshot.
@@ -339,6 +307,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let path = items.first(where: { $0.name == "path" })?.value { menuShot(to: path) }
             case "pin": capturePin()
             case "closepins": PinController.shared.closeAll()
+            case "settings": SettingsWindowController.shared.show()
+            case "setshortcut":
+                // Test hook: snapper://setshortcut?action=scrolling&key=1&mods=2560 (omit key to clear), or action=defaults.
+                let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                func v(_ n: String) -> String? { q.first(where: { $0.name == n })?.value }
+                if v("action") == "defaults" { ShortcutStore.shared.restoreDefaults(); break }
+                guard let action = v("action").flatMap(ShortcutAction.init(rawValue:)) else { break }
+                let shortcut = v("key").flatMap(UInt32.init).map { Shortcut(keyCode: $0, modifiers: v("mods").flatMap(UInt32.init) ?? 0) }
+                Log.write("setshortcut \(action.rawValue): \(ShortcutStore.shared.set(action, to: shortcut))")
             case "appearance":
                 // Test hook: force light or dark for this run only. Anything else follows the system again.
                 let mode = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "mode" })?.value

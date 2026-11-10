@@ -11,17 +11,27 @@ Every capture goes straight to the clipboard and is saved as a PNG.
 
 ## What it does
 
-| Keys | Action |
+| Default keys | Action |
 |---|---|
-| § (the key top left, on its own) | Capture a region (drag) or a window (hover and click). Esc cancels. |
-| Shift-Option-C | The same, for keyboards without a § key |
+| Shift-Option-C | Capture a region (drag) or a window (hover and click). Esc cancels. |
 | Shift-Option-F | Capture the full screen the mouse is on |
 | Shift-Option-S | Scrolling capture: pick the area, scroll down, press Return |
 | Shift-Option-T | Grab text: drag over text and it is copied as text, not as an image |
 | Shift-Option-P | Pin: drag over an area and it stays floating on top of everything |
 
 All of these are also in the menu bar menu (the viewfinder icon), along with Recent Captures,
-Show All Captures (history), Change Save Folder, Launch at Login and About.
+Show All Captures (history), Settings and About.
+
+### Settings and shortcuts
+
+**Settings…** in the menu (Command-comma) holds the shortcuts, the save folder and Launch at Login.
+
+Every shortcut can be changed: click its box and press the new keys. Delete clears a shortcut, Esc
+cancels, and Restore Defaults puts them all back. Region capture has a second, alternate slot, which
+suits a one-key shortcut such as § (top left on British and other ISO keyboards) or a function key.
+A key that types something needs Control, Option or Command with it; § and the function keys can be
+used on their own. If the keys you choose belong to another Snapper action the two are swapped, and
+if macOS refuses the keys the row says so.
 
 ### After a capture
 
@@ -107,7 +117,7 @@ The app icon is drawn by `Scripts/make-icon.swift`; rerun it and `iconutil` only
 
 | To change | Edit |
 |---|---|
-| A shortcut | `Sources/Snapper/App/AppDelegate.swift` (the `HotKeyCenter.shared.register` lines and the matching menu items) and `HotKeys.swift` for key codes |
+| A default shortcut | `defaultShortcut` in `Sources/Snapper/Settings/Shortcuts.swift` (users change their own in Settings) |
 | Version shown in About | `CFBundleShortVersionString` in `Info.plist`, by hand. The build number in brackets is set by `build.sh` to the number of commits, so it rises by itself |
 | Name in About, copyright | `Info.plist` and `menuAbout` in `AppDelegate.swift` |
 | Default save folder | `FileStore` in `Sources/Snapper/Output/Output.swift` |
@@ -122,6 +132,7 @@ The app icon is drawn by `Scripts/make-icon.swift`; rerun it and `iconutil` only
 | `Sources/Snapper/Output` | Clipboard, file saving, thumbnail, text grab, pins |
 | `Sources/Snapper/Editor` | Editor window, canvas, annotation drawing |
 | `Sources/Snapper/History` | History window |
+| `Sources/Snapper/Settings` | Settings window, shortcut storage and recorder |
 | `Sources/Stitcher` | Scroll stitching, pure logic with no UI |
 | `Tests/StitcherTests` | Pixel-exact stitching tests |
 
