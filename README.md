@@ -28,7 +28,7 @@ Show All Captures (history), Change Save Folder, Launch at Login and About.
 1. The image is on the clipboard. Snapper reads it back to confirm, and warns if the copy failed.
 2. A PNG is saved to `~/Pictures/Screenshots` as `YYYY-MM-DD HH.mm.ss.png`.
 3. A thumbnail appears bottom right for a few seconds. Click it to open the editor, drag it into
-   another app to drop the file, or ignore it and it fades.
+   another app to drop the file, or ignore it and it fades. Hovering shows Edit, Pin and Close buttons.
 
 ### Scrolling capture
 
@@ -68,13 +68,15 @@ from history, or once the file no longer exists.
 
 ### Pins
 
-Drag a pin to move it, scroll over it to resize, double-click or press Esc to close it.
+Drag a pin to move it, scroll over it to resize, and close it with the button that appears on hover,
+a double-click or Esc.
 Right-click for Copy and Open in Editor. "Close All Pins" appears in the menu when any are up.
 
 ### History
 
-"Show All Captures" lists everything in the save folder, newest first. Double-click to open in the
-editor; right-click to copy, show in Finder or move to the Trash. History is just the folder, so
+"Show All Captures" lists everything in the save folder, newest first and grouped by day. Click to
+select, double-click to open in the editor, drag a capture out to use the file, right-click to copy,
+show in Finder or move to the Trash. Captures with stored edits carry an "Edited" badge. History is just the folder, so
 there is nothing to maintain.
 
 ## Permission

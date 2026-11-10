@@ -228,7 +228,10 @@ private final class OverlayView: NSView {
         }
 
         if let hint, dragStart == nil {
-            drawLabel(hint, near: CGPoint(x: bounds.midX - 150, y: 40), fallbackInside: nil, size: 14)
+            let width = NSAttributedString(string: hint, attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 14, weight: .medium),
+            ]).size().width + 12
+            drawLabel(hint, near: CGPoint(x: bounds.midX - width / 2, y: 44), fallbackInside: nil, size: 14)
         }
     }
 

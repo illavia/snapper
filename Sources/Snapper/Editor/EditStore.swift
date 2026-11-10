@@ -109,6 +109,10 @@ enum EditStore {
         return Saved(original: original, scale: CGFloat(state.scale), annotations: annotations, crop: crop)
     }
 
+    static func hasEdits(for file: URL) -> Bool {
+        FileManager.default.fileExists(atPath: folder(for: file).appendingPathComponent("state.json").path)
+    }
+
     static func remove(for file: URL) {
         try? FileManager.default.removeItem(at: folder(for: file))
     }

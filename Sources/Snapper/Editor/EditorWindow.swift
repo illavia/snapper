@@ -88,8 +88,10 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         undo.bezelStyle = .texturedRounded
         undo.toolTip = "Undo (⌘Z)"
         let copy = NSButton(title: "Copy", target: self, action: #selector(copyClicked))
-        copy.bezelStyle = .texturedRounded
-        copy.toolTip = "Copy the marked-up image (⌘C)"
+        copy.bezelStyle = .rounded
+        copy.controlSize = .large
+        copy.bezelColor = .controlAccentColor
+        copy.toolTip = "Copy the marked-up image (⌘C or Return)"
         copy.keyEquivalent = "\r"
         let save = NSButton(title: "Save", target: self, action: #selector(saveClicked))
         save.bezelStyle = .texturedRounded
@@ -100,7 +102,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         let revert = NSButton(title: "Revert", target: self, action: #selector(revertClicked))
         revert.bezelStyle = .texturedRounded
         revert.toolTip = "Remove every mark and crop, back to the original capture"
-        let bar = NSStackView(views: [tools, colorWell, undo, revert, spacer, save, copy])
+        let bar = NSStackView(views: [tools, colorWell, undo, spacer, revert, save, copy])
         bar.orientation = .horizontal
         bar.spacing = 10
         bar.edgeInsets = NSEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
@@ -179,7 +181,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         guard let shot = currentShot() else { return }
         let copied = Clipboard.copy(shot)
         Log.write("editor: copy \(shot.image.width)x\(shot.image.height) clipboard=\(copied)")
-        flashTitle(copied ? "Copied" : "Could not copy")
+        Toast.show(copied ? "Copied to clipboard" : "Could not copy", warn: !copied)
     }
 
     @discardableResult

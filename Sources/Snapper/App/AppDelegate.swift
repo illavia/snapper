@@ -46,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.addItem(item("About Snapper", #selector(menuAbout)))
         menu.addItem(.separator())
-        menu.addItem(item("Capture Region or Window   (or §)", #selector(menuCapture), key: "c"))
+        menu.addItem(item("Capture Region or Window", #selector(menuCapture), key: "§", modifiers: []))
         menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), key: "f"))
         menu.addItem(item("Scrolling Capture", #selector(menuScrolling), key: "s"))
         menu.addItem(item("Grab Text", #selector(menuText), key: "t"))
@@ -152,7 +152,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard !OverlayController.isActive, !ScrollSession.isActive else { return }
         Task {
             do {
-                guard let picked = try await OverlayController.pick() else { return }
+                let hint = "Drag a region  ·  click a window  ·  Esc to cancel"
+                guard let picked = try await OverlayController.pick(hint: hint) else { return }
                 guard let image = picked.frozen.crop(picked.rect) else { return }
                 deliver(image, scale: picked.frozen.scale, kind: "region")
             } catch { report(error) }
@@ -254,9 +255,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         var warning: String?
         if !copied { warning = "Not copied to clipboard" } else if saved == nil { warning = "Copied, but not saved" }
-        ThumbnailController.shared.show(image: shot.nsImage, file: saved, warning: warning) {
-            EditorWindowController.open(shot: shot, file: saved)
-        }
+        ThumbnailController.shared.show(image: shot.nsImage, file: saved, warning: warning, onEdit: {
+            if let saved { EditorWindowController.open(file: saved) } else { EditorWindowController.open(shot: shot, file: nil) }
+        }, onPin: {
+            PinController.shared.pin(shot, at: nil)
+        })
         HistoryWindowController.shared.reloadIfVisible()
     }
 
@@ -336,6 +339,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let path = items.first(where: { $0.name == "path" })?.value { menuShot(to: path) }
             case "pin": capturePin()
             case "closepins": PinController.shared.closeAll()
+            case "thumbbuttons": ThumbnailController.shared.revealButtonsForSnapshot()
             case "rect", "scrollrect", "textrect", "pinrect":
                 let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
                 func value(_ name: String) -> CGFloat {

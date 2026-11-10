@@ -85,6 +85,24 @@ private final class PinWindow: NSPanel {
 private final class PinView: NSView {
     var image: NSImage?
     weak var owner: PinWindow?
+    private lazy var closeButton: OverlayIconButton = {
+        let button = OverlayIconButton(symbol: "xmark", tip: "Close pin", target: self, action: #selector(closeClicked))
+        button.isHidden = true
+        button.autoresizingMask = [.maxXMargin, .minYMargin]
+        return button
+    }()
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard closeButton.superview == nil else { return }
+        closeButton.frame.origin = NSPoint(x: 6, y: bounds.height - 34)
+        addSubview(closeButton)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+
+    override func mouseEntered(with event: NSEvent) { closeButton.isHidden = false }
+    override func mouseExited(with event: NSEvent) { closeButton.isHidden = true }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override var mouseDownCanMoveWindow: Bool { true }
