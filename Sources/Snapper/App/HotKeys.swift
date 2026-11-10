@@ -54,4 +54,6 @@ enum HotKey {
     static let keyF = UInt32(kVK_ANSI_F)
     static let keyT = UInt32(kVK_ANSI_T)
     static let keyP = UInt32(kVK_ANSI_P)
+    /// The § key, top left on British and other ISO keyboards.
+    static let keySection = UInt32(kVK_ISO_Section)
 }

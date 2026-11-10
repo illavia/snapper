@@ -22,6 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             self?.captureScrolling()
         }
 
+        // One-key capture: plain § with nothing held. Shift-§ still types ±.
+        let sectionOK = HotKeyCenter.shared.register(id: 6, keyCode: HotKey.keySection, modifiers: 0) { [weak self] in
+            self?.captureInteractive()
+        }
+        Log.write("section key shortcut registered: \(sectionOK)")
         HotKeyCenter.shared.register(id: 4, keyCode: HotKey.keyT, modifiers: HotKey.optionShift) { [weak self] in
             self?.captureText()
         }
@@ -41,7 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.removeAllItems()
         menu.addItem(item("About Snapper", #selector(menuAbout)))
         menu.addItem(.separator())
-        menu.addItem(item("Capture Region or Window", #selector(menuCapture), key: "c"))
+        menu.addItem(item("Capture Region or Window   (or §)", #selector(menuCapture), key: "c"))
         menu.addItem(item("Capture Full Screen", #selector(menuFullScreen), key: "f"))
         menu.addItem(item("Scrolling Capture", #selector(menuScrolling), key: "s"))
         menu.addItem(item("Grab Text", #selector(menuText), key: "t"))

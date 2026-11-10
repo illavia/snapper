@@ -13,7 +13,8 @@ Every capture goes straight to the clipboard and is saved as a PNG.
 
 | Keys | Action |
 |---|---|
-| Shift-Option-C | Capture a region (drag) or a window (hover and click). Esc cancels. |
+| § (the key top left, on its own) | Capture a region (drag) or a window (hover and click). Esc cancels. |
+| Shift-Option-C | The same, for keyboards without a § key |
 | Shift-Option-F | Capture the full screen the mouse is on |
 | Shift-Option-S | Scrolling capture: pick the area, scroll down, press Return |
 | Shift-Option-T | Grab text: drag over text and it is copied as text, not as an image |
