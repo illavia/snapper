@@ -23,6 +23,8 @@ current when behaviour changes. This file holds what a new session needs that th
     ./build.sh && open /Applications/Snapper.app     # local build, installs and relaunches
     swift test                                       # stitching logic, 6 tests
 
+- To compile without touching the installed app: `./build.sh --no-install` (builds and signs into
+  `build/` only). `./release.sh --no-notarise` stops before anything is sent to Apple.
 - `build.sh` signs with the **Apple Development** identity. Keep it that way: a stable identity is
   what keeps the Screen Recording permission across rebuilds. This build only opens on his Mac.
 - Swift 6.4 toolchain, Swift 5 language mode, macOS 14+, no third-party packages. Keep it that way
@@ -50,20 +52,30 @@ current when behaviour changes. This file holds what a new session needs that th
 
 ## Testing without a person
 
-The app answers `snapper://` URLs (table in the README; handlers in `App/AppDelegate.swift`).
+The app answers `snapper://` URLs. The list here is the full one (the README table is a shorter
+summary); the handlers are in `application(_:open:)` in `App/AppDelegate.swift`.
 
 - `open "snapper://rect?x=&y=&w=&h="` captures a rectangle with no picker. Coordinates are points from
   the top-left of the primary display. Add `&own=1` to include Snapper's own windows, which is how to
-  photograph the editor, Settings, About, thumbnails and pins.
+  photograph the editor, Settings, About, thumbnails and pins. Only the presence of `own` counts, so
+  leave it out to exclude them.
 - `snapper://selftest?kind=…` drives the picker and editor with synthetic events inside the app
   (`App/SelfTest.swift`): region, window, editor, texts, deselect, recolour, esctext, zoom, record,
   reopen.
-- `snapper://setshortcut?action=&key=&mods=`, `settings`, `appearance?mode=light|dark`, `history`,
-  `about`, `menushot?path=`, `scrollrect` then `scrolldone`, `textrect`, `pinrect`, `closepins`.
+- `settings`, `history`, `about`, `closepins`, `scrollrect` then `scrolldone`, `textrect`, `pinrect`.
+- `open?path=` opens a file in the editor. `thumbbuttons` shows the thumbnail's hover buttons so they
+  can be photographed. `menushot?path=` opens the menu bar menu and saves a picture of it.
+- `appearance?mode=light|dark` forces the look for this run only; any other value follows the system.
+- `setshortcut?action=<capture|captureAlt|fullScreen|scrolling|text|pin>&key=<n>&mods=<n>`. `key` is the
+  macOS virtual key code and `mods` the Carbon modifier sum (cmd 256, shift 512, option 2048,
+  control 4096; so Shift-Option is 2560). Leave out `key` to clear that shortcut; `action=defaults`
+  restores them all. The result is written to the log. This changes his real shortcuts: put back
+  whatever you change.
 - Scrolling capture is tested against a long local page served over `http://localhost` (a `file://`
   page does not reload reliably in Safari).
 
-Test captures land in his real `~/Pictures/Screenshots` folder next to his own captures.
+Test captures land in his real save folder, next to his own captures. That is `~/Pictures/Screenshots`
+by default, or whatever folder is chosen in Settings; the log line gives the exact path.
 
 - Find yours from the log (`grep ' rect: .*file=' ~/Library/Logs/Snapper.log`), never with
   `ls -t | head -1`, which once picked up and renamed one of his.
