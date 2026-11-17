@@ -29,17 +29,13 @@ current when behaviour changes. This file holds what a new session needs that th
   what keeps the Screen Recording permission across rebuilds. This build only opens on his Mac.
 - Swift 6.4 toolchain, Swift 5 language mode, macOS 14+, no third-party packages. Keep it that way
   unless there is a strong reason.
-- To check that a change compiles without touching the installed app: `./build.sh --no-install`
-  (builds and signs into `build/`, leaves `/Applications` and the running app alone), or just
-  `swift build -c release --product Snapper`. Both print a few harmless warnings.
+- The build prints a few warnings (for example in `MainMenu.swift`). They are harmless.
 - Log: `~/Library/Logs/Snapper.log`. Every capture writes size, clipboard result, file and timings.
 
 ## Releasing a copy for other people
 
     ./release.sh        # universal build, Developer ID signed, notarised, stapled, zipped
 
-- `./release.sh --no-notarise` stops after signing and sends nothing to Apple. Use it to check the
-  universal build; the result is not for sharing.
 - Output: `build/release/Snapper-<version>.zip`. That zip, or the `Snapper.app` beside it, is the
   only thing to give anyone. Never the copy in `/Applications`.
 - Uses the **Developer ID Application** certificate (team K9MT44M2RM, in the login keychain) and the
@@ -63,8 +59,7 @@ summary); the handlers are in `application(_:open:)` in `App/AppDelegate.swift`.
 - `open "snapper://rect?x=&y=&w=&h="` captures a rectangle with no picker. Coordinates are points from
   the top-left of the primary display. Add `&own=1` to include Snapper's own windows, which is how to
   photograph the editor, Settings, About, thumbnails and pins. Only the presence of `own` counts, so
-  `own=0` includes them too: leave it off to exclude them. Only the presence of `own` counts, so
-  leave it out to exclude them.
+  `own=0` includes them too: leave it out to exclude them.
 - `snapper://selftest?kind=…` drives the picker and editor with synthetic events inside the app
   (`App/SelfTest.swift`): region, window, editor, texts, deselect, recolour, esctext, zoom, record,
   reopen.
