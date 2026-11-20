@@ -13,6 +13,8 @@ final class HistoryModel: ObservableObject {
     @Published var days: [Day] = []
     @Published var selected: URL?
     @Published var edited: Set<URL> = []
+    /// Test hook: show every cell's hover button so it can be photographed.
+    static var showButtonsForSnapshot = false
 
     func reload() {
         let files = FileStore.recent(limit: 300)
@@ -170,6 +172,23 @@ private struct HistoryCell: View {
                 }
             }
             .frame(height: 140)
+            .overlay(alignment: .topLeading) {
+                // Top left, away from the Edited badge. The Trash keeps the file, so a slip can be put back.
+                if hovering || HistoryModel.showButtonsForSnapshot {
+                    Button(action: moveToTrash) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 22, height: 22)
+                            .background(Color.black.opacity(0.72), in: Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.6), lineWidth: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(6)
+                    .help("Move to Trash")
+                    .accessibilityLabel("Move to Trash")
+                }
+            }
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? Color.accentColor : Color(nsColor: .separatorColor).opacity(hovering ? 1 : 0.6),
@@ -194,11 +213,7 @@ private struct HistoryCell: View {
             }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             Divider()
-            Button("Move to Trash") {
-                try? FileManager.default.trashItem(at: url, resultingItemURL: nil)
-                EditStore.remove(for: url)
-                model.reload()
-            }
+            Button("Move to Trash") { moveToTrash() }
         }
         .accessibilityLabel(Self.label(for: url))
         .task(id: url) { thumbnail = await Self.loadThumbnail(url) }
@@ -213,6 +228,18 @@ private struct HistoryCell: View {
             if time.count == 3 { return "\(time[0]):\(time[1]):\(time[2])" + (parts.count > 2 ? " (\(parts[2...].joined(separator: " ")))" : "") }
         }
         return name
+    }
+
+    private func moveToTrash() {
+        do {
+            try FileManager.default.trashItem(at: url, resultingItemURL: nil)
+            EditStore.remove(for: url)
+            Log.write("history: moved to Trash \(url.lastPathComponent)")
+        } catch {
+            Log.write("history: could not move to Trash \(url.lastPathComponent): \(error.localizedDescription)")
+            Toast.show("Could not move to Trash", warn: true)
+        }
+        model.reload()
     }
 
     private func copy() {

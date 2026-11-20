@@ -290,7 +290,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             case "capture": captureInteractive()
             case "fullscreen": captureFullScreen()
             case "scroll": captureScrolling()
-            case "history": HistoryWindowController.shared.show()
+            case "history":
+                // snapper://history?buttons=1 shows the hover buttons on every cell, for a picture.
+                HistoryModel.showButtonsForSnapshot = url.query?.contains("buttons") == true
+                HistoryWindowController.shared.show()
             case "about": menuAbout()
             case "scrolldone": ScrollSession.finishCurrent()
             case "selftest":

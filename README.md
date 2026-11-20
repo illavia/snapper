@@ -96,7 +96,8 @@ Right-click for Copy and Open in Editor. "Close All Pins" appears in the menu wh
 
 "Show All Captures" lists everything in the save folder, newest first and grouped by day. Click to
 select, double-click to open in the editor, drag a capture out to use the file, right-click to copy,
-print, show in Finder or move to the Trash. Captures with stored edits carry an "Edited" badge. History is just the folder, so
+print, show in Finder or move to the Trash. Pointing at a capture shows an ✕ in its top left corner,
+which moves it to the Trash in one click (it can be put back from the Trash). Captures with stored edits carry an "Edited" badge. History is just the folder, so
 there is nothing to maintain.
 
 ## Permission

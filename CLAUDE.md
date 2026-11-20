@@ -67,6 +67,8 @@ summary); the handlers are in `application(_:open:)` in `App/AppDelegate.swift`.
   read the PDF to check page count, orientation and scaling. `selftest?kind=print` logs who would
   answer File > Print for the front window (the canvas in the editor, `HistoryWindowController` in
   history) and whether the editor shows its Print button. Neither touches the clipboard.
+- `history?buttons=1` shows the hover ✕ on every capture so it can be photographed; a restart or
+  plain `history` turns it off.
 - `settings`, `history`, `about`, `closepins`, `scrollrect` then `scrolldone`, `textrect`, `pinrect`.
 - `open?path=` opens a file in the editor. `thumbbuttons` shows the thumbnail's hover buttons so they
   can be photographed. `menushot?path=` opens the menu bar menu and saves a picture of it.
@@ -107,6 +109,7 @@ by default, or whatever folder is chosen in Settings; the log line gives the exa
 ## Not yet checked by a real hand
 
 The print panel itself and paper from a real printer, Print… in the history right-click menu,
+clicking the hover ✕ in history,
 trackpad pinch zoom in the editor, hover buttons with a real mouse, dragging the thumbnail into
 another app, recording a shortcut with real keys, the £ sign in grabbed text, scrolling a PDF.
 
