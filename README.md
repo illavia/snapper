@@ -5,7 +5,7 @@ Every capture goes straight to the clipboard and is saved as a PNG.
 
 <img src="docs/menu.png" width="275" alt="The Snapper menu"> <img src="docs/about.png" width="284" alt="About Snapper">
 
-- Version 1.1.0, developed by Jawaz Illavia, built with Claude Code
+- Version 1.2.0, developed by Jawaz Illavia, built with Claude Code
 - Native Swift, no third-party packages, about 0.9 MB installed
 - macOS 14 or later (built and used on macOS 27, Apple silicon)
 
