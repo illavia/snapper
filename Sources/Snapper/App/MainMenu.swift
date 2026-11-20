@@ -14,6 +14,9 @@ enum MainMenu {
 
         let file = NSMenu(title: "File")
         file.addItem(withTitle: "Save", action: Selector(("saveDocument:")), keyEquivalent: "s")
+        // Answered by the editor (the canvas) and by the history window. Greyed out anywhere else.
+        file.addItem(withTitle: "Print…", action: Selector(("printDocument:")), keyEquivalent: "p")
+        file.addItem(.separator())
         file.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         add(file, to: main, title: "File")
 

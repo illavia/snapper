@@ -15,6 +15,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
     var onToolKey: ((Tool) -> Void)?
     var onCopy: (() -> Void)?
     var onSave: (() -> Void)?
+    var onPrint: (() -> Void)?
     /// 1 zoom in, -1 zoom out, 0 actual size, 2 fit to window.
     var onZoom: ((Int) -> Void)?
     var onChange: (() -> Void)?
@@ -156,6 +157,7 @@ final class CanvasView: NSView, NSTextFieldDelegate {
 
     @objc func copy(_ sender: Any?) { onCopy?() }
     @objc func saveDocument(_ sender: Any?) { onSave?() }
+    @objc func printDocument(_ sender: Any?) { onPrint?() }
     @objc func snapperZoomIn(_ sender: Any?) { onZoom?(1) }
     @objc func snapperZoomOut(_ sender: Any?) { onZoom?(-1) }
     @objc func snapperZoomActual(_ sender: Any?) { onZoom?(0) }

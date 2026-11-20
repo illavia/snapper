@@ -44,7 +44,7 @@ final class HistoryModel: ObservableObject {
 }
 
 @MainActor
-final class HistoryWindowController: NSObject, NSWindowDelegate {
+final class HistoryWindowController: NSObject, NSWindowDelegate, NSMenuItemValidation {
     static let shared = HistoryWindowController()
 
     private var window: NSWindow?
@@ -75,11 +75,22 @@ final class HistoryWindowController: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        menuItem.action == Selector(("printDocument:")) ? model.selected != nil : true
+    }
+
     func reloadIfVisible() {
         if window?.isVisible == true { model.reload() }
     }
 
     func windowDidBecomeKey(_ notification: Notification) { model.reload() }
+
+    /// File > Print (⌘P) prints the selected capture.
+    @objc func printDocument(_ sender: Any?) {
+        if let file = model.selected { Printer.print(file: file, window: window) }
+    }
+
+    func print(_ file: URL) { Printer.print(file: file, window: window) }
 
     func windowWillClose(_ notification: Notification) {
         window = nil
@@ -177,6 +188,10 @@ private struct HistoryCell: View {
         .contextMenu {
             Button("Open in Editor") { EditorWindowController.open(file: url) }
             Button("Copy") { copy() }
+            Button("Print…") {
+                model.selected = url
+                HistoryWindowController.shared.print(url)
+            }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             Divider()
             Button("Move to Trash") {

@@ -301,6 +301,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let path = items.first(where: { $0.name == "path" })?.value {
                     EditorWindowController.open(file: URL(fileURLWithPath: path))
                 }
+            case "printpdf":
+                // Test hook: snapper://printpdf?path=<image>&out=<pdf> runs the print job into a PDF, no panel.
+                let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                if let path = q.first(where: { $0.name == "path" })?.value, let out = q.first(where: { $0.name == "out" })?.value {
+                    Printer.savePDF(file: URL(fileURLWithPath: path), to: URL(fileURLWithPath: out))
+                }
             case "text": captureText()
             case "menushot":
                 let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []

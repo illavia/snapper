@@ -220,6 +220,17 @@ enum SelfTest {
             }
             Log.write("selftest: zoom " + readings.joined(separator: ", "))
             canvas.onZoom?(1); canvas.onZoom?(1)
+        case "print":
+            // Reports who would answer File > Print for the front window, and whether an editor shows its Print button.
+            let action = Selector(("printDocument:"))
+            let item = NSApp.mainMenu?.items.compactMap({ $0.submenu?.items.first(where: { $0.action == action }) }).first
+            let target = NSApp.target(forAction: action, to: nil, from: item)
+            let editor = NSApp.windows.first(where: { $0.isVisible && findCanvas(in: $0.contentView) != nil })
+            let button = allViews(in: editor?.contentView).compactMap({ $0 as? NSButton }).contains(where: { $0.title == "Print" })
+            Log.write("selftest: print key=\(NSApp.keyWindow?.title ?? "none") menu item=\(item?.title ?? "missing") "
+                + "key=\(item?.keyEquivalent ?? "") answered by=\(target.map { String(describing: type(of: $0)) } ?? "nobody") "
+                + "editor button=\(button)")
+            if let snapshot, let view = (editor ?? NSApp.keyWindow)?.contentView { save(view: view, to: snapshot) }
         case "record":
             // Record a shortcut through the real recorder box: click it, then press Command-Shift-9.
             SettingsWindowController.shared.show()

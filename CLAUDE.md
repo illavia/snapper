@@ -62,7 +62,11 @@ summary); the handlers are in `application(_:open:)` in `App/AppDelegate.swift`.
   `own=0` includes them too: leave it out to exclude them.
 - `snapper://selftest?kind=…` drives the picker and editor with synthetic events inside the app
   (`App/SelfTest.swift`): region, window, editor, texts, deselect, recolour, esctext, zoom, record,
-  reopen.
+  reopen, print.
+- `printpdf?path=<image>&out=<pdf>` runs the real print job into a PDF with no panel and no printer:
+  read the PDF to check page count, orientation and scaling. `selftest?kind=print` logs who would
+  answer File > Print for the front window (the canvas in the editor, `HistoryWindowController` in
+  history) and whether the editor shows its Print button. Neither touches the clipboard.
 - `settings`, `history`, `about`, `closepins`, `scrollrect` then `scrolldone`, `textrect`, `pinrect`.
 - `open?path=` opens a file in the editor. `thumbbuttons` shows the thumbnail's hover buttons so they
   can be photographed. `menushot?path=` opens the menu bar menu and saves a picture of it.
@@ -102,7 +106,8 @@ by default, or whatever folder is chosen in Settings; the log line gives the exa
 
 ## Not yet checked by a real hand
 
-Trackpad pinch zoom in the editor, hover buttons with a real mouse, dragging the thumbnail into
+The print panel itself and paper from a real printer, Print… in the history right-click menu,
+trackpad pinch zoom in the editor, hover buttons with a real mouse, dragging the thumbnail into
 another app, recording a shortcut with real keys, the £ sign in grabbed text, scrolling a PDF.
 
 ## Design choices already made

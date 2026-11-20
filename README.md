@@ -66,7 +66,8 @@ Click a thumbnail, or open any capture from Recent Captures or history.
 | Blur / redact | R | Drag over anything to pixelate it |
 | Crop | C | Drag the area to keep |
 
-Command-Z undoes, Shift-Command-Z redoes, Command-C copies the marked-up image, Command-S saves.
+Command-Z undoes, Shift-Command-Z redoes, Command-C copies the marked-up image, Command-S saves and
+Command-P prints (also the Print button and File › Print…).
 The toolbar shows the zoom percentage: pinch to zoom, or use Command-= and Command--, Command-0 for
 actual size and Command-9 to fit the window.
 Closing the window saves any changes.
@@ -78,6 +79,13 @@ Reopen the capture in the editor and every mark is still selectable, movable and
 treats it as a plain image again. Stored edits are removed when the capture is moved to the Trash
 from history, or once the file no longer exists.
 
+### Printing
+
+Print from the editor (the Print button, File › Print… or Command-P) or from history (right-click a
+capture and choose Print…, or select it and press Command-P). The editor prints what is on screen,
+marks included, saved or not. A capture is shrunk to fit one page and never enlarged; wide ones print
+landscape. A long scrolling capture is fitted to the page width and runs over several pages.
+
 ### Pins
 
 Drag a pin to move it, scroll over it to resize, and close it with the button that appears on hover,
@@ -88,7 +96,7 @@ Right-click for Copy and Open in Editor. "Close All Pins" appears in the menu wh
 
 "Show All Captures" lists everything in the save folder, newest first and grouped by day. Click to
 select, double-click to open in the editor, drag a capture out to use the file, right-click to copy,
-show in Finder or move to the Trash. Captures with stored edits carry an "Edited" badge. History is just the folder, so
+print, show in Finder or move to the Trash. Captures with stored edits carry an "Edited" badge. History is just the folder, so
 there is nothing to maintain.
 
 ## Permission
@@ -129,7 +137,7 @@ The app icon is drawn by `Scripts/make-icon.swift`; rerun it and `iconutil` only
 |---|---|
 | `Sources/Snapper/App` | Menu bar, shortcuts, About, log, test hooks |
 | `Sources/Snapper/Capture` | Screen capture, the picker overlay, scrolling session |
-| `Sources/Snapper/Output` | Clipboard, file saving, thumbnail, text grab, pins |
+| `Sources/Snapper/Output` | Clipboard, file saving, thumbnail, text grab, pins, printing |
 | `Sources/Snapper/Editor` | Editor window, canvas, annotation drawing |
 | `Sources/Snapper/History` | History window |
 | `Sources/Snapper/Settings` | Settings window, shortcut storage and recorder |

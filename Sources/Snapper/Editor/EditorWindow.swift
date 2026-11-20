@@ -66,6 +66,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         canvas.onSelectColor = { [weak self] colour in self?.colorWell.color = colour }
         canvas.onCopy = { [weak self] in self?.copyImage() }
         canvas.onSave = { [weak self] in self?.save() }
+        canvas.onPrint = { [weak self] in self?.printImage() }
         canvas.onChange = { [weak self] in self?.window.isDocumentEdited = self?.canvas.isModified ?? false }
     }
 
@@ -107,6 +108,10 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         save.bezelStyle = .texturedRounded
         save.toolTip = "Save (⌘S). The original is kept, so marks stay editable when you reopen it"
 
+        let print = NSButton(title: "Print", target: self, action: #selector(printClicked))
+        print.bezelStyle = .texturedRounded
+        print.toolTip = "Print the marked-up image (⌘P)"
+
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
         let revert = NSButton(title: "Revert", target: self, action: #selector(revertClicked))
@@ -123,7 +128,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
             zoomPopup.lastItem?.action = #selector(zoomMenuChosen(_:))
         }
         zoomPopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 76).isActive = true
-        let bar = NSStackView(views: [tools, colorWell, undo, zoomPopup, spacer, revert, save, copy])
+        let bar = NSStackView(views: [tools, colorWell, undo, zoomPopup, spacer, revert, print, save, copy])
         bar.orientation = .horizontal
         bar.spacing = 10
         bar.edgeInsets = NSEdgeInsets(top: 8, left: 12, bottom: 8, right: 12)
@@ -235,6 +240,7 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
     @objc private func colorChanged() { canvas.color = colorWell.color }
     @objc private func copyClicked() { copyImage() }
     @objc private func saveClicked() { save() }
+    @objc private func printClicked() { printImage() }
     @objc private func revertClicked() {
         canvas.revert(to: original)
         window.makeFirstResponder(canvas)
@@ -249,6 +255,12 @@ final class EditorWindowController: NSObject, NSWindowDelegate {
         let copied = Clipboard.copy(shot)
         Log.write("editor: copy \(shot.image.width)x\(shot.image.height) clipboard=\(copied)")
         Toast.show(copied ? "Copied to clipboard" : "Could not copy", warn: !copied)
+    }
+
+    /// Prints what is on screen now, saved or not.
+    private func printImage() {
+        guard let image = canvas.flattened() else { return }
+        Printer.print(image, scale: canvas.scale, title: window.title, window: window)
     }
 
     @discardableResult
