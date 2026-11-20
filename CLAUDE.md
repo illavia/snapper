@@ -69,6 +69,9 @@ summary); the handlers are in `application(_:open:)` in `App/AppDelegate.swift`.
   history) and whether the editor shows its Print button. Neither touches the clipboard.
 - `history?buttons=1` shows the hover ✕ on every capture so it can be photographed; a restart or
   plain `history` turns it off.
+- `thumbtest?path=<image>[&snapshot=<png>][&trash=1]` shows the thumbnail for any file with its hover
+  buttons, with no capture and the clipboard untouched; `trash=1` presses its Trash button, so only
+  point that at a scratch copy.
 - `settings`, `history`, `about`, `closepins`, `scrollrect` then `scrolldone`, `textrect`, `pinrect`.
 - `open?path=` opens a file in the editor. `thumbbuttons` shows the thumbnail's hover buttons so they
   can be photographed. `menushot?path=` opens the menu bar menu and saves a picture of it.
@@ -109,7 +112,7 @@ by default, or whatever folder is chosen in Settings; the log line gives the exa
 ## Not yet checked by a real hand
 
 The print panel itself and paper from a real printer, Print… in the history right-click menu,
-clicking the hover ✕ in history,
+clicking the hover ✕ in history and the Trash button on the thumbnail,
 trackpad pinch zoom in the editor, hover buttons with a real mouse, dragging the thumbnail into
 another app, recording a shortcut with real keys, the £ sign in grabbed text, scrolling a PDF.
 

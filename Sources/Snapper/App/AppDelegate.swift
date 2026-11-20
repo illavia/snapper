@@ -329,6 +329,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 // Test hook: force light or dark for this run only. Anything else follows the system again.
                 let mode = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "mode" })?.value
                 NSApp.appearance = mode == "light" ? NSAppearance(named: .aqua) : (mode == "dark" ? NSAppearance(named: .darkAqua) : nil)
+            case "thumbtest":
+                // Test hook: snapper://thumbtest?path=<image>[&snapshot=<png>][&trash=1]. No capture, clipboard untouched.
+                let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                if let path = q.first(where: { $0.name == "path" })?.value {
+                    ThumbnailController.shared.showForTest(file: URL(fileURLWithPath: path),
+                                                           snapshot: q.first(where: { $0.name == "snapshot" })?.value,
+                                                           trash: q.contains(where: { $0.name == "trash" }))
+                }
             case "thumbbuttons": ThumbnailController.shared.revealButtonsForSnapshot()
             case "rect", "scrollrect", "textrect", "pinrect":
                 let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []

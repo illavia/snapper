@@ -1,7 +1,7 @@
 import AppKit
 
 /// Small floating preview after a capture. Click opens the editor, drag drops the file,
-/// hover shows Edit, Pin and Close, otherwise it fades.
+/// hover shows Trash on the left and Edit, Pin and Close on the right, otherwise it fades.
 @MainActor
 final class ThumbnailController {
     static let shared = ThumbnailController()
@@ -15,7 +15,7 @@ final class ThumbnailController {
 
         let maxSize = NSSize(width: 240, height: 160)
         let ratio = min(maxSize.width / max(image.size.width, 1), maxSize.height / max(image.size.height, 1), 1)
-        let size = NSSize(width: max(image.size.width * ratio, 120), height: max(image.size.height * ratio, 60))
+        let size = NSSize(width: max(image.size.width * ratio, 150), height: max(image.size.height * ratio, 60))
         let padding: CGFloat = 6
         let footer: CGFloat = warning == nil ? 0 : 20
         let frameSize = NSSize(width: size.width + padding * 2, height: size.height + padding * 2 + footer)
@@ -47,6 +47,11 @@ final class ThumbnailController {
             onPin()
         }
         view.onClose = { [weak self] in self?.dismiss(animated: true) }
+        view.onTrash = { [weak self] in
+            guard let file else { return }
+            self?.dismiss(animated: false)
+            Self.moveToTrash(file)
+        }
         view.onHover = { [weak self] inside in
             if inside { self?.dismissWork?.cancel() } else { self?.scheduleDismiss(after: 3) }
         }
@@ -62,6 +67,20 @@ final class ThumbnailController {
         }
         self.panel = panel
         scheduleDismiss(after: warning == nil ? 6 : 12)
+    }
+
+    /// The capture stays on the clipboard; only the saved file goes.
+    static func moveToTrash(_ file: URL) {
+        do {
+            try FileManager.default.trashItem(at: file, resultingItemURL: nil)
+            EditStore.remove(for: file)
+            Log.write("thumbnail: moved to Trash \(file.lastPathComponent)")
+            Toast.show("Moved to Trash", warn: false)
+        } catch {
+            Log.write("thumbnail: could not move to Trash \(file.lastPathComponent): \(error.localizedDescription)")
+            Toast.show("Could not move to Trash", warn: true)
+        }
+        HistoryWindowController.shared.reloadIfVisible()
     }
 
     private func scheduleDismiss(after seconds: TimeInterval) {
@@ -118,6 +137,7 @@ private final class ThumbnailView: NSView, NSDraggingSource {
     var onClick: (() -> Void)?
     var onPin: (() -> Void)?
     var onClose: (() -> Void)?
+    var onTrash: (() -> Void)?
     var onHover: ((Bool) -> Void)?
     var onDragEnded: (() -> Void)?
 
@@ -151,11 +171,22 @@ private final class ThumbnailView: NSView, NSDraggingSource {
             buttons.append(button)
             x += 34
         }
+        // Trash sits alone on the left, away from Close, so one is not hit for the other.
+        guard file != nil else { return }
+        let trash = OverlayIconButton(symbol: "trash", tip: "Move to Trash", target: self, action: #selector(trashClicked))
+        trash.frame.origin = NSPoint(x: imageRect.minX + 6, y: imageRect.maxY - 6 - 28)
+        trash.isHidden = true
+        addSubview(trash)
+        buttons.append(trash)
     }
+
+    /// Test hook: press the Trash button as a click would.
+    func pressTrashForTest() { buttons.first(where: { $0.toolTip == "Move to Trash" })?.performClick(nil) }
 
     @objc private func editClicked() { onClick?() }
     @objc private func pinClicked() { onPin?() }
     @objc private func closeClicked() { onClose?() }
+    @objc private func trashClicked() { onTrash?() }
 
     override func draw(_ dirtyRect: NSRect) {
         let background = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10)
@@ -232,5 +263,19 @@ extension ThumbnailController {
     /// Test hook: reveal the hover buttons so they can be photographed.
     func revealButtonsForSnapshot() {
         (panel?.contentView as? ThumbnailView)?.showButtonsForSnapshot()
+    }
+
+    /// Test hook: show the thumbnail for a file with no capture, optionally save a picture of it, then press Trash.
+    func showForTest(file: URL, snapshot: String?, trash: Bool) {
+        guard let image = NSImage(contentsOf: file) else { return }
+        show(image: image, file: file, onEdit: {}, onPin: {})
+        revealButtonsForSnapshot()
+        guard let view = panel?.contentView as? ThumbnailView else { return }
+        view.display()
+        if let snapshot, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) {
+            view.cacheDisplay(in: view.bounds, to: rep)
+            try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: snapshot))
+        }
+        if trash { view.pressTrashForTest() }
     }
 }

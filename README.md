@@ -38,7 +38,9 @@ if macOS refuses the keys the row says so.
 1. The image is on the clipboard. Snapper reads it back to confirm, and warns if the copy failed.
 2. A PNG is saved to `~/Pictures/Screenshots` as `YYYY-MM-DD HH.mm.ss.png`.
 3. A thumbnail appears bottom right for a few seconds. Click it to open the editor, drag it into
-   another app to drop the file, or ignore it and it fades. Hovering shows Edit, Pin and Close buttons.
+   another app to drop the file, or ignore it and it fades. Hovering shows Edit, Pin and Close buttons
+   on the right and a Trash button on the left, which moves the saved file to the Trash. The capture
+   stays on the clipboard.
 
 ### Scrolling capture
 
