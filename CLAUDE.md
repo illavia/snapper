@@ -53,7 +53,8 @@ current when behaviour changes. This file holds what a new session needs that th
 - Verify before saying it is ready: unzip a copy, then `xcrun stapler validate` and
   `spctl --assess --type execute -vv` must report "Notarized Developer ID".
 - Publish with `gh release create v<version> <zip> -R illavia/snapper --target <full commit sha>`
-  (a short sha is rejected). While the repo is private, release links only work for the owner.
+  (a short sha is rejected). The repo is public, so the release page is the link to give people:
+  https://github.com/illavia/snapper/releases/latest
 - Bump `CFBundleShortVersionString` in `Info.plist` by hand when a release means something.
 - The Mac App Store is on hold by the owner's decision. It would need sandboxing and a different capture
   permission flow. Do not start it unprompted.

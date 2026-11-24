@@ -7,7 +7,16 @@ Every capture goes straight to the clipboard and is saved as a PNG.
 
 - Version 1.2.0, developed by Jawaz Illavia, built with Claude Code
 - Native Swift, no third-party packages, about 0.9 MB installed
-- macOS 14 or later (built and used on macOS 27, Apple silicon)
+- macOS 14 or later, Apple silicon and Intel (built and used on macOS 27, Apple silicon)
+
+## Download
+
+Get the latest `Snapper-<version>.zip` from the
+[releases page](https://github.com/illavia/snapper/releases/latest). Double-click the zip, drag
+Snapper into Applications and open it from there. It is signed and notarised by Apple. macOS asks
+once for Screen & System Audio Recording permission: allow it, then quit and reopen Snapper.
+
+Download it in a browser. A copy sent as a file through WhatsApp did not open on the other Mac.
 
 ## What it does
 
