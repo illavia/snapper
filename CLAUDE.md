@@ -40,6 +40,11 @@ current when behaviour changes. This file holds what a new session needs that th
 
 - Output: `build/release/Snapper-<version>.zip`. That zip, or the `Snapper.app` beside it, is the
   only thing to give anyone. Never the copy in `/Applications`.
+- Do not send it through WhatsApp. A copy received that way would not open on the other Mac ("The
+  application can't be opened") until the quarantine flag was removed by hand. Send a download link
+  or an email attachment instead.
+- The Intel half is confirmed running on a real Intel Mac on macOS 26 (24 Nov 2026): the menu bar
+  menu opened. Captures on Intel have not been reported on yet.
 - Uses the **Developer ID Application** certificate (team K9MT44M2RM, in the login keychain) and the
   keychain profile `snapper-notary`. Both are already set up.
 - Notarisation waits on Apple. It is usually minutes, but the first submissions took 11 hours. Run it
