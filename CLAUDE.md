@@ -1,22 +1,24 @@
 # CLAUDE.md
 
-Snapper is Jawaz's own menu bar screenshot app for macOS, built to replace Snagit. Screenshots only,
+Snapper is a menu bar screenshot app for macOS by Jawaz Illavia, built to replace Snagit. Screenshots only,
 no video. `README.md` is the user-facing documentation and the code map: read it first, and keep it
 current when behaviour changes. This file holds what a new session needs that the README does not say.
 
 ## Ground rules
 
-- Jawaz uses Snapper many times a day. The clipboard copy must never fail silently: that is why the
-  app exists.
-- He is not a Swift developer. Explain changes in plain English, and verify them yourself rather than
-  asking him to test. Say plainly what you could not verify.
-- Rebuilding and restarting the app while he works is fine.
-- Never simulate key presses on his keyboard and never drive the mouse to test. Use the `snapper://`
+- Snapper is in daily use on the owner's Mac. The clipboard copy must never fail silently: that is
+  why the app exists.
+- Explain changes in plain English, and verify them yourself rather than asking the owner to test.
+  Say plainly what you could not verify.
+- Rebuilding and restarting the app while the owner works is fine.
+- Never simulate key presses on the keyboard and never drive the mouse to test. Use the `snapper://`
   hooks and the in-app self-tests below.
-- Never handle his Apple ID or the app-specific password. He types those himself.
-- Do not change System Settings (Login Items, privacy switches). Ask him to.
+- Never handle the Apple ID or the app-specific password. The owner types those.
+- Do not change System Settings (Login Items, privacy switches). Ask the owner to.
 - Commit after each working change with a short message, and push. The About panel's build number is
   the commit count, so it rises by itself.
+- Commits use the owner's GitHub private address (`…@users.noreply.github.com`), set in this repo's
+  git config. Do not change `user.email`: GitHub rejects pushes that expose the real address.
 
 ## Build, run, test
 
@@ -26,7 +28,7 @@ current when behaviour changes. This file holds what a new session needs that th
 - To compile without touching the installed app: `./build.sh --no-install` (builds and signs into
   `build/` only). `./release.sh --no-notarise` stops before anything is sent to Apple.
 - `build.sh` signs with the **Apple Development** identity. Keep it that way: a stable identity is
-  what keeps the Screen Recording permission across rebuilds. This build only opens on his Mac.
+  what keeps the Screen Recording permission across rebuilds. This build only opens on the Mac it was built on.
 - Swift 6.4 toolchain, Swift 5 language mode, macOS 14+, no third-party packages. Keep it that way
   unless there is a strong reason.
 - The build prints a few warnings (for example in `MainMenu.swift`). They are harmless.
@@ -46,9 +48,9 @@ current when behaviour changes. This file holds what a new session needs that th
 - Verify before saying it is ready: unzip a copy, then `xcrun stapler validate` and
   `spctl --assess --type execute -vv` must report "Notarized Developer ID".
 - Publish with `gh release create v<version> <zip> -R illavia/snapper --target <full commit sha>`
-  (a short sha is rejected). The repo is private, so release links only work for Jawaz.
+  (a short sha is rejected). While the repo is private, release links only work for the owner.
 - Bump `CFBundleShortVersionString` in `Info.plist` by hand when a release means something.
-- The Mac App Store is on hold by his decision. It would need sandboxing and a different capture
+- The Mac App Store is on hold by the owner's decision. It would need sandboxing and a different capture
   permission flow. Do not start it unprompted.
 
 ## Testing without a person
@@ -79,18 +81,19 @@ summary); the handlers are in `application(_:open:)` in `App/AppDelegate.swift`.
 - `setshortcut?action=<capture|captureAlt|fullScreen|scrolling|text|pin>&key=<n>&mods=<n>`. `key` is the
   macOS virtual key code and `mods` the Carbon modifier sum (cmd 256, shift 512, option 2048,
   control 4096; so Shift-Option is 2560). Leave out `key` to clear that shortcut; `action=defaults`
-  restores them all. The result is written to the log. This changes his real shortcuts: put back
+  restores them all. The result is written to the log. This changes the real shortcuts: put back
   whatever you change.
 - Scrolling capture is tested against a long local page served over `http://localhost` (a `file://`
   page does not reload reliably in Safari).
 
-Test captures land in his real save folder, next to his own captures. That is `~/Pictures/Screenshots`
+Test captures land in the real save folder, next to the owner's own captures. That is `~/Pictures/Screenshots`
 by default, or whatever folder is chosen in Settings; the log line gives the exact path.
 
 - Find yours from the log (`grep ' rect: .*file=' ~/Library/Logs/Snapper.log`), never with
-  `ls -t | head -1`, which once picked up and renamed one of his.
-- Move your test captures to the Trash when done, especially any that show his screen.
-- A test capture replaces whatever is on his clipboard. Avoid running them while he is mid-task.
+  `ls -t | head -1`, which once picked up and renamed a real one.
+- Move your test captures to the Trash when done, especially any that show the screen.
+- A test capture replaces whatever is on the clipboard. Avoid running them while the owner is
+  mid-task.
 
 ## Things that went wrong once
 
@@ -106,8 +109,8 @@ by default, or whatever folder is chosen in Settings; the log line gives the exa
 - **Text recognition** takes tens of seconds the first time after launch, so it is warmed up in the
   background at start.
 - **Text marks** are drawn as solid labels. An outline or glow was unreadable on busy backgrounds.
-- **Scrolling bar.** Done and Cancel are large, centred with Auto Layout, on an opaque bar. He asked
-  for each of those.
+- **Scrolling bar.** Done and Cancel are large, centred with Auto Layout, on an opaque bar. Each of
+  those was asked for.
 
 ## Not yet checked by a real hand
 
@@ -118,8 +121,8 @@ another app, recording a shortcut with real keys, the £ sign in grabbed text, s
 
 ## Design choices already made
 
-- Shortcuts default to Shift-Option-C/F/S/T/P. Region capture has a second slot, which he has set to
-  the § key on his Mac. Shortcuts are per user in Settings; do not hard-code his.
+- Shortcuts default to Shift-Option-C/F/S/T/P. Region capture has a second slot for a
+  one-key shortcut. Shortcuts are per user in Settings; do not hard-code anyone's.
 - After every capture: clipboard, a PNG in the save folder, and a thumbnail. No prompts.
 - Edits are non-destructive: the flattened PNG is in the save folder, the original and the marks are
   in `~/Library/Application Support/Snapper/Edits`.
