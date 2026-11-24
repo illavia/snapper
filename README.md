@@ -174,3 +174,7 @@ Coordinates are in points from the top-left of the primary display.
 ## Not included
 
 Video recording, auto-scroll, delayed capture, cloud upload and sharing.
+
+## Licence
+
+MIT. See `LICENSE`.
